@@ -96,7 +96,6 @@ mini-cursor cli chat
 | `mini-cursor cli config`     | Interactive API param config (.env) |
 | `mini-cursor cli mcp-config` | Interactive MCP config editor       |
 | `mini-cursor cli chat`       | Start chat agent                   |
-| `mini-cursor-server`         | Start MCP server (dev/extension)   |
 
 **In chat mode, you can use:**
 - `history`             View tool call history

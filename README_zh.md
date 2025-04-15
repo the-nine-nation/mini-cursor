@@ -97,7 +97,6 @@ mini-cursor cli chat
 | `mini-cursor cli config`     | 交互式修改 API 参数（写入.env）|
 | `mini-cursor cli mcp-config` | 交互式生成/编辑 MCP 配置      |
 | `mini-cursor cli chat`       | 启动智能体聊天                |
-| `mini-cursor-server`         | 启动 MCP 服务端（开发/扩展用）|
 
 **聊天模式下支持的命令：**
 - `history`             查看工具调用历史
