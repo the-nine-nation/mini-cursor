@@ -4,7 +4,7 @@
 
 Cursor costs $20 per month, which is a week's worth of food for many people. Its closed-source nature has been a pain for the community for too long!
 
-Therefore, we open-sourced a super lightweight command-line project for Cursor-like programming, for everyone to learn and use.
+Therefore, we open-sourced a super lightweight command-line project for Cursor-like programming, for everyone to learn and use.You can use mini-cursor cli in any directory to write programs using AI agents with this directory as the workspace!
 
 You can use the high-quality tool call data collected by this project.
 
@@ -30,7 +30,7 @@ pip install mini_cursor
 ### Method 2: Source install (for developers/customization)
 
 ```bash
-git clone <repo_url>
+git clone https://github.com/the-nine-nation/mini-cursor.git
 cd mini_cursor
 pip install -e .
 ```

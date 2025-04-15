@@ -4,7 +4,7 @@
 
 cursor一个月20美金,对于很多人而言,这是一个星期的饭食.cursor的闭源伤害了我们,天下苦其久已!
 
-基于此,我们开源了一个使用命令行进行类cursor编程的超轻量级项目,以供各位学习使用.
+基于此,我们开源了一个使用命令行进行类cursor编程的超轻量级项目,以供各位学习使用.你可以在任意目录下使用mini-cursor cli ***以该目录为工作区使用AI agent编写程序!
 
 你可以使用该项目收集到优质的tool call数据
 
@@ -30,7 +30,7 @@ pip install mini_cursor
 ### 方式二：源码安装（开发者/自定义）
 
 ```bash
-git clone <项目url>
+git clone https://github.com/the-nine-nation/mini-cursor.git
 cd mini_cursor
 pip install -e .
 ```
