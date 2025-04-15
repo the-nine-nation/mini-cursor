@@ -1,0 +1,160 @@
+[
+    {
+        "name": "read_file",
+        "description": "Read the contents of a file (and the outline).\n\nWhen using this tool to gather information, it's your responsibility to ensure you have the COMPLETE context. Each time you call this command you should:\n1) Assess if contents viewed are sufficient to proceed with the task.\n2) Take note of lines not shown.\n3) If file contents viewed are insufficient, and you suspect they may be in lines not shown, proactively call the tool again to view those lines.\n4) When in doubt, call this tool again to gather more information. Partial file views may miss critical dependencies, imports, or functionality.\n\nIf reading a range of lines is not enough, you may choose to read the entire file.\nReading entire files is often wasteful and slow, especially for large files (i.e. more than a few hundred lines). So you should use this option sparingly.\nReading the entire file is not allowed in most cases. You are only allowed to read the entire file if it has been edited or manually attached to the conversation by the user.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "target_file": {
+                    "type": "string",
+                    "description": "The path of the file to read. You can use either a relative path in the workspace or an absolute path. If an absolute path is provided, it will be preserved as is."
+                },
+                "should_read_entire_file": {
+                    "type": "boolean",
+                    "description": "Whether to read the entire file. Defaults to false.",
+                    "default": false
+                },
+                "start_line_one_indexed": {
+                    "type": "integer",
+                    "description": "The one-indexed line number to start reading from (inclusive)."
+                },
+                "end_line_one_indexed_inclusive": {
+                    "type": "integer",
+                    "description": "The one-indexed line number to end reading at (inclusive)."
+                },
+                "explanation": {
+                    "type": "string",
+                    "description": "One sentence explanation as to why this tool is being used, and how it contributes to the goal."
+                }
+            },
+            "required": [
+                "target_file",
+                "should_read_entire_file",
+                "start_line_one_indexed",
+                "end_line_one_indexed_inclusive"
+            ]
+        }
+    },
+    {
+        "name": "edit_file",
+        "description": "Use this tool to propose an edit to an existing file.\nThis will be read by a less intelligent model, which will quickly apply the edit. You should make it clear what the edit is, while also minimizing the unchanged code you write.\nWhen writing the edit, you should specify each edit in sequence, with the special comment `// ... existing code ...` to represent unchanged code in between edited lines.\nFor example:\n```\n// ... existing code ...\nFIRST_EDIT\n// ... existing code ...\nSECOND_EDIT\n// ... existing code ...\nTHIRD_EDIT\n// ... existing code ...\n```\nYou should bias towards repeating as few lines of the original file as possible to convey the change.\nBut, each edit should contain sufficient context of unchanged lines around the code you're editing to resolve ambiguity.\nDO NOT omit spans of pre-existing code without using the `// ... existing code ...` comment to indicate its absence.\nMake sure it is clear what the edit should be.\nYou should specify the following arguments before the others: [target_file]",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "target_file": {
+                    "type": "string",
+                    "description": "The target file to modify. Always specify the target file as the first argument. You can use either a relative path in the workspace or an absolute path. If an absolute path is provided, it will be preserved as is."
+                },
+                "instructions": {
+                    "type": "string",
+                    "description": "A single sentence instruction describing what you are going to do for the sketched edit. This is used to assist the less intelligent model in applying the edit. Please use the first person to describe what you are going to do. Dont repeat what you have said previously in normal messages. And use it to disambiguate uncertainty in the edit."
+                },
+                "code_edit": {
+                    "type": "string",
+                    "description": "Specify ONLY the precise lines of code that you wish to edit. **NEVER specify or write out unchanged code**. Instead, represent all unchanged code using the comment of the language you're editing in - example: `// ... existing code ...`"
+                }
+            },
+            "required": [
+                "target_file",
+                "instructions",
+                "code_edit"
+            ]
+        }
+    },
+    {
+        "name": "search_files",
+        "description": "Fast file search based on fuzzy matching against file path. Use if you know part of the file path but don't know where it's located exactly. Response will be capped to 10 results. Make your query more specific if need to filter results further.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Fuzzy filename to search for"
+                },
+                "explanation": {
+                    "type": "string",
+                    "description": "One sentence explanation as to why this tool is being used, and how it contributes to the goal."
+                }
+            },
+            "required": [
+                "query",
+                "explanation"
+            ]
+        }
+    },
+    {
+        "name": "terminal_command",
+        "description": "PROPOSE a command to run on behalf of the user.\nIf you have this tool, note that you DO have the ability to run commands directly on the USER's system.\n\nAdhere to these rules:\n1. Based on the contents of the conversation, you will be told if you are in the same shell as a previous step or a new shell.\n2. If in a new shell, you should `cd` to the right directory and do necessary setup in addition to running the command.\n3. If in the same shell, the state will persist, no need to do things like `cd` to the same directory.\n4. For ANY commands that would use a pager, you should append ` | cat` to the command (or whatever is appropriate). You MUST do this for: git, less, head, tail, more, etc.\n5. For commands that are long running/expected to run indefinitely until interruption, please run them in the background. To run jobs in the background, set `is_background` to true rather than changing the details of the command.\n6. Dont include any newlines in the command.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "The terminal command to execute"
+                },
+                "is_background": {
+                    "type": "boolean",
+                    "description": "Whether the command should be run in the background"
+                },
+                "explanation": {
+                    "type": "string",
+                    "description": "One sentence explanation as to why this command needs to be run and how it contributes to the goal."
+                }
+            },
+            "required": [
+                "command",
+                "is_background"
+            ]
+        }
+    },
+    {
+        "name": "reapply",
+        "description": "Calls a smarter model to apply the last edit to the specified file.\nUse this tool immediately after the result of an edit_file tool call ONLY IF the diff is not what you expected, indicating the model applying the changes was not smart enough to follow your instructions.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "target_file": {
+                    "type": "string",
+                    "description": "The relative path to the file to reapply the last edit to. You can use either a relative path in the workspace or an absolute path. If an absolute path is provided, it will be preserved as is."
+                }
+            },
+            "required": [
+                "target_file"
+            ]
+        }
+    },
+    {
+        "name": "list_dir",
+        "description": "List the contents of a directory. The quick tool to use for discovery, before using more targeted tools like semantic search or file reading. Useful to try to understand the file structure before diving deeper into specific files. Can be used to explore the codebase.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "relative_workspace_path": {
+                    "type": "string",
+                    "description": "Path to list contents of, relative to the workspace root. Ex: './' is the root of the workspace"
+                },
+                "explanation": {
+                    "type": "string",
+                    "description": "One sentence explanation as to why this tool is being used, and how it contributes to the goal."
+                }
+            },
+            "required": [
+                "relative_workspace_path"
+            ]
+        }
+    },
+    {
+        "name": "web_search",
+        "description": "Perform a web search using BochaAI's web search API. Returns JSON search results.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "The search query."},
+                "summary": {"type": "boolean", "description": "Whether to return a summary.", "default": true},
+                "count": {"type": "integer", "description": "Number of results to return.", "default": 10},
+                "page": {"type": "integer", "description": "Page number.", "default": 1}
+            },
+            "required": ["query"]
+        }
+    }
+] 
