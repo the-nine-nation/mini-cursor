@@ -87,8 +87,8 @@ class CLIHandler:
             self.nonlocal_ns.ctrl_c_pressed = False
 
 CONFIG_VARS = [
-    ("OPENAI_API_KEY", "OpenAI API Key"),
     ("OPENAI_BASE_URL", "OpenAI Base URL"),
+    ("OPENAI_API_KEY", "OpenAI API Key"),
     ("OPENAI_MODEL", "OpenAI Model"),
 ]
 

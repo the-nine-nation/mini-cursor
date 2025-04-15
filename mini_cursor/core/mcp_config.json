@@ -1,0 +1,13 @@
+{
+    "mcpServers": {
+        "default": {
+            "command": "/Volumes/AppData/opt/anaconda3/envs/mcp_env/bin/python",
+            "args": [
+                "/Volumes/AppData/guanan/lzy/mcp_lzy/mini_cursor/mini_cursor/core/cursor_mcp_all.py"
+            ],
+            "env": {
+                "BOCHAAI_API_KEY": ""
+            }
+        }
+    }
+}
