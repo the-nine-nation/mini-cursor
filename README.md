@@ -62,6 +62,7 @@ This command will automatically generate `mini_cursor/core/mcp_config.json` with
   }
 }
 ```
+If you want the agent to perform automatic web search, you can go to [BochaAI](https://open.bochaai.com/) to obtain the corresponding api_key to support retrieval.
 
 ### 2. Configure API Key (Required/Recommended)
 

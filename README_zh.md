@@ -62,6 +62,7 @@ mini-cursor cli init
   }
 }
 ```
+如果你想要智能体自动web搜索,可前往 [BochaAI](https://open.bochaai.com/) 获取对应api_key,以支持检索
 
 ### 2. 配置 API Key（必选，推荐）
 
