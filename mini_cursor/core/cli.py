@@ -53,7 +53,7 @@ class CLIHandler:
         """获取用户输入的增强方法，支持多行输入"""
         try:
             print(f"{Colors.BOLD}{prompt}{Colors.ENDC}")
-            print(f"{Colors.CYAN}(多行输入模式：两次回车结束输入,若要输入大量内容,请将\n\n删减){Colors.ENDC}")
+            print(f"{Colors.CYAN}(多行输入模式：两次回车结束输入,若要输入大量内容,请将\\n\\n删减){Colors.ENDC}")
             
             lines = []
             while True:

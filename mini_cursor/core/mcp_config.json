@@ -14,6 +14,7 @@
                 "MYSQL_PASSWORD": "3hd2eV-^MNSrtQ06",
                 "MYSQL_POOL_MINSIZE": "1",
                 "MYSQL_POOL_MAXSIZE": "10",
+                "MAX_ROWS": "10",
                 "MYSQL_RESOURCE_DESC_FILE": "/Volumes/AppData/guanan/Item/mini-cursor/mini_cursor/core/database_mcp/mysql_resource.txt"
             }
         },
@@ -29,7 +30,8 @@
                 "CLICKHOUSE_DATABASE": "argus",
                 "CLICKHOUSE_USERNAME": "default",
                 "CLICKHOUSE_PASSWORD": "ugOZymrL54TawiV4",
-                "CLICKHOUSE_RESOURCE_DESC_FILE": "/Volumes/AppData/guanan/Item/mini-cursor/mini_cursor/core/database_mcp/clickhouse_resource.txt"
+                "CLICKHOUSE_RESOURCE_DESC_FILE": "/Volumes/AppData/guanan/Item/mini-cursor/mini_cursor/core/database_mcp/clickhouse_resource.txt",
+                "MAX_ROWS": "10"
             }
         }
     }

@@ -36,6 +36,7 @@ DB_CONFIG = {
     "pool_minsize": int(os.environ.get("MYSQL_POOL_MINSIZE", "1")),
     "pool_maxsize": int(os.environ.get("MYSQL_POOL_MAXSIZE", "10")),
     "resource_desc_file": os.environ.get("MYSQL_RESOURCE_DESC_FILE", ""),  # 资源描述文件路径（必需）
+    "max_rows": int(os.environ.get("MAX_ROWS", "10"))
 }
 
 
@@ -85,7 +86,7 @@ mysql_resource_description = load_resource_description()
 tool_specs = [
     {
         "name": "mysql_execute_read_query",
-        "description": "Execute read-only MySQL SQL code. Only SELECT, SHOW, DESCRIBE, EXPLAIN allowed; queries are validated before execution."+mysql_resource_description,
+        "description": "Execute read-only MySQL SQL code. Only SELECT, SHOW, DESCRIBE, EXPLAIN allowed; queries are validated before execution.\n\n"+mysql_resource_description,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -101,7 +102,7 @@ tool_specs = [
                 "max_rows": {
                     "type": "integer",
                     "description": "Maximum number of rows to return",
-                    "default": 10
+                    "default": int(os.environ.get("MAX_ROWS", "10"))
                 }
             },
             "required": ["query"]
@@ -200,7 +201,7 @@ async def tool_mysql_execute_read_query(args: dict) -> str:
     try:
         query = args["query"]
         params = args.get("params", {})
-        max_rows = args.get("max_rows", 100)
+        max_rows = args.get("max_rows", int(os.environ.get("MAX_ROWS", "10")))
                     
         # 执行查询
         return await execute_db_query(query, params, max_rows)
