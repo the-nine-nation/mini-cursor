@@ -1,8 +1,10 @@
 # Byte-compiled / optimized / DLL files
+/mini-cursor/mcp_config.json
+
 __pycache__/
 *.py[cod]
 *$py.class
-
+*.txt
 # C extensions
 *.so
 

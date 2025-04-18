@@ -50,10 +50,29 @@ class CLIHandler:
             asyncio.get_event_loop().call_later(5, lambda: setattr(self.nonlocal_ns, 'ctrl_c_pressed', False))
     
     def get_input(self, prompt="\nQuery: ") -> str:
-        """获取用户输入的增强方法，处理删除字符的问题"""
+        """获取用户输入的增强方法，支持多行输入"""
         try:
-            # 使用readline模块获取输入
-            user_input = input(f"{Colors.BOLD}{prompt}{Colors.ENDC}").strip()
+            print(f"{Colors.BOLD}{prompt}{Colors.ENDC}")
+            print(f"{Colors.CYAN}(多行输入模式：两次回车结束输入,若要输入大量内容,请将\n\n删减){Colors.ENDC}")
+            
+            lines = []
+            while True:
+                try:
+                    # 使用input()逐行读取，这样不会有大小限制
+                    line = input()
+                    if not line.strip():  # 空行表示结束输入
+                        break
+                    lines.append(line)
+                except EOFError:  # 处理EOF (Ctrl+D)
+                    print("\n检测到EOF，结束输入")
+                    break
+            
+            user_input = "\n".join(lines).strip()
+            
+            # 如果输入为空，给出提示
+            if not user_input:
+                print(f"{Colors.YELLOW}输入为空，请重新输入{Colors.ENDC}")
+                return self.get_input(prompt)
             
             # 处理特殊命令
             if user_input.lower() == 'history':
@@ -66,10 +85,10 @@ class CLIHandler:
                 return self.get_input(prompt)  # 递归调用以获取实际查询
                 
             return user_input
-        except (EOFError, KeyboardInterrupt):
-            # 处理Ctrl+D或Ctrl+C
-            print("\nExiting...")
-            return "quit"
+        except KeyboardInterrupt:
+            # 处理Ctrl+C
+            print("\n输入已取消")
+            return self.get_input(prompt)  # 允许用户重新输入，而不是直接退出
     
     def print_welcome_message(self) -> None:
         """打印欢迎信息和基本指令"""
@@ -233,16 +252,58 @@ def init_main():
             return spec.origin
         fallback = Path(__file__).parent / "cursor_mcp_all.py"
         return str(fallback.resolve())
+    def get_mysql_mcp_path():
+        spec = importlib.util.find_spec("mini_cursor.core.database_mcp.mysql_mcp")
+        if spec and spec.origin:
+            return spec.origin
+        fallback = Path(__file__).parent / "database_mcp/mysql_mcp.py"
+        return str(fallback.resolve())
+    def get_clickhouse_mcp_path():
+        spec = importlib.util.find_spec("mini_cursor.core.database_mcp.clickhouse_mcp")
+        if spec and spec.origin:
+            return spec.origin
+        fallback = Path(__file__).parent / "database_mcp/clickhouse_mcp.py"
+        return str(fallback.resolve())
     cursor_mcp_py = get_cursor_mcp_path()
+    mysql_mcp_py = get_mysql_mcp_path()
+    clickhouse_mcp_py = get_clickhouse_mcp_path()
     # 生成配置内容
     config = {
         "mcpServers": {
-            "default": {
+            "cursor_mcp": {
                 "command": sys.executable,
                 "args": [cursor_mcp_py],
                 "env": {
-                    "BOCHAAI_API_KEY": ""
+                    "BOCHAAI_API_KEY": "bochaai的api,请进入https://open.bochaai.com/获取api,使模型能够进行web搜索"
                 }
+            },
+            "mysql": {
+                "command": sys.executable,
+                "args": [mysql_mcp_py],
+                "env": {
+                    "MYSQL_ENABLED": "true",
+                    "MYSQL_HOST": "mysql数据库的ip",
+                    "MYSQL_PORT": "mysql数据库的端口",
+                    "MYSQL_DATABASE": "mysql数据库的名称",
+                    "MYSQL_USERNAME": "mysql数据库的用户名",
+                    "MYSQL_PASSWORD": "mysql数据库的密码",
+                    "MYSQL_POOL_MINSIZE": "1",
+                    "MYSQL_POOL_MAXSIZE": "10",
+                    "MYSQL_RESOURCE_DESC_FILE": "mysql数据库的资源描述文件路径"
+                }
+            },
+            "clickhouse": {
+                "command": sys.executable,
+                "args": [clickhouse_mcp_py],
+                "env": {
+                    "CLICKHOUSE_ENABLED": "true",
+                    "CLICKHOUSE_HOST": "clickhouse数据库的ip",
+                    "CLICKHOUSE_PORT": "clickhouse数据库的端口",
+                    "CLICKHOUSE_DATABASE": "clickhouse数据库的名称",
+                    "CLICKHOUSE_USERNAME": "clickhouse数据库的用户名",
+                    "CLICKHOUSE_PASSWORD": "clickhouse数据库的密码",
+                    "CLICKHOUSE_RESOURCE_DESC_FILE": "clickhouse数据库的资源描述文件路径"
+                    }
             }
         }
     }

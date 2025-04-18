@@ -14,17 +14,18 @@ setup(
         'python-dotenv',
         'openai',
         'requests',
-        'mcp[cli]',
+        'mcp',
         'click',
         'rich',
+        'aiomysql',
+        'clickhouse-driver'
     ],
     entry_points={
         'console_scripts': [
             'mini-cursor = mini_cursor.cli_main:cli',
-            'mini-cursor-server = mini_cursor.core.cursor_mcp_all:main',
         ],
     },
-    python_requires='>=3.9',
+    python_requires='>=3.10',
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',

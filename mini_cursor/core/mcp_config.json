@@ -1,12 +1,35 @@
 {
     "mcpServers": {
-        "default": {
+        "mysql": {
             "command": "/Volumes/AppData/opt/anaconda3/envs/mcp_env/bin/python",
             "args": [
-                "/Volumes/AppData/guanan/lzy/mcp_lzy/mini_cursor/mini_cursor/core/cursor_mcp_all.py"
+                "/Volumes/AppData/guanan/Item/mini-cursor/mini_cursor/core/database_mcp/mysql_mcp.py"
             ],
             "env": {
-                "BOCHAAI_API_KEY": ""
+                "MYSQL_ENABLED": "true",
+                "MYSQL_HOST": "10.20.22.63",
+                "MYSQL_PORT": "3306",
+                "MYSQL_DATABASE": "argus",
+                "MYSQL_USERNAME": "root",
+                "MYSQL_PASSWORD": "3hd2eV-^MNSrtQ06",
+                "MYSQL_POOL_MINSIZE": "1",
+                "MYSQL_POOL_MAXSIZE": "10",
+                "MYSQL_RESOURCE_DESC_FILE": "/Volumes/AppData/guanan/Item/mini-cursor/mini_cursor/core/database_mcp/mysql_resource.txt"
+            }
+        },
+        "clickhouse": {
+            "command": "/Volumes/AppData/opt/anaconda3/envs/mcp_env/bin/python",
+            "args": [
+                "/Volumes/AppData/guanan/Item/mini-cursor/mini_cursor/core/database_mcp/clickhouse_mcp.py"
+            ],
+            "env": {
+                "CLICKHOUSE_ENABLED": "true",
+                "CLICKHOUSE_HOST": "10.20.22.63",
+                "CLICKHOUSE_PORT": "8123",
+                "CLICKHOUSE_DATABASE": "argus",
+                "CLICKHOUSE_USERNAME": "default",
+                "CLICKHOUSE_PASSWORD": "ugOZymrL54TawiV4",
+                "CLICKHOUSE_RESOURCE_DESC_FILE": "/Volumes/AppData/guanan/Item/mini-cursor/mini_cursor/core/database_mcp/clickhouse_resource.txt"
             }
         }
     }

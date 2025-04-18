@@ -3,14 +3,14 @@
 import asyncio
 import sys
 import traceback
+import signal
+import os
+import platform
 
 from mini_cursor.core.config import Colors, OPENAI_BASE_URL, OPENAI_MODEL, TOOL_CALL_TIMEOUT, VERBOSE_LOGGING, MCP_CONFIG_FILE
 from mini_cursor.core.mcp_client import MCPClient
 from mini_cursor.core.cli import CLIHandler, setup_readline, config_main, mcp_config_generate_main
 from mini_cursor.prompt import system_prompt
-
-import os
-import platform
 
 # 获取操作系统版本
 os_version = platform.platform()
@@ -18,42 +18,87 @@ os_version = platform.platform()
 # 获取shell路径
 shell_path = os.environ.get('SHELL', '未知')
 
+# 全局变量，用于信号处理程序
+shutdown_event = None
+client = None
+
+# 自定义信号处理程序
+def setup_signal_handlers():
+    def graceful_exit_handler(sig, frame):
+        print("\n\n正在优雅退出，请稍候...(这可能需要几秒钟)")
+        if shutdown_event:
+            shutdown_event.set()
+    
+    # 设置SIGINT (Ctrl+C) 处理器
+    signal.signal(signal.SIGINT, graceful_exit_handler)
+    
+    # 设置SIGTERM处理器
+    signal.signal(signal.SIGTERM, graceful_exit_handler)
+
 
 async def chat_loop(client, cli_handler, workspace):
     """运行交互式聊天循环"""
+    global shutdown_event
+    shutdown_event = asyncio.Event()
+    
     cli_handler.print_welcome_message()
 
-    while True:
+    while not shutdown_event.is_set():
         try:
-            # 使用增强的输入方法
-            query = cli_handler.get_input()
+            # 使用增强的输入方法, 带超时以便可以检查shutdown_event
+            # 创建一个任务来获取用户输入
+            input_task = asyncio.create_task(asyncio.to_thread(cli_handler.get_input))
             
-            if not query:
-                print("Please enter a query. Empty input is not allowed.")
+            # 等待用户输入或者shutdown_event被设置
+            done, pending = await asyncio.wait(
+                [input_task, asyncio.create_task(shutdown_event.wait())],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            
+            # 如果shutdown_event被设置，取消输入任务并退出
+            if shutdown_event.is_set():
+                for task in pending:
+                    task.cancel()
+                break
+            
+            # 获取用户输入
+            query = input_task.result() if input_task in done else ""
+            
+            # 检查输入是否为空
+            if not query or not query.strip():
+                print(f"{Colors.YELLOW}请输入有效的查询。空输入不被允许。{Colors.ENDC}")
                 continue
                 
             if query.lower() == 'quit':
+                print("\n退出中，正在清理资源...")
+                shutdown_event.set()
                 break
             
             # 处理特殊命令
             if query.lower() == 'history':
-                client._display_tool_history()
+                client.display_tool_history()
                 continue
                 
             if query.lower() == 'message history':
-                client._display_message_history()
+                client.display_message_history()
                 continue
                 
             if query.lower() == 'clear history':
                 client.clear_message_history()
                 continue
+                
+            if query.lower() == 'servers':
+                client.display_servers()
+                continue
             
             if query.lower() == 'config':
                 config_main()
                 continue
-            if query.lower() == 'mcp-config-generate':
+                
+            if query.lower() == 'mcp-config':
                 mcp_config_generate_main()
                 continue
+                
             if query.lower() == 'help':
                 print("\n可用命令:")
                 print("  quit                退出聊天")
@@ -62,26 +107,47 @@ async def chat_loop(client, cli_handler, workspace):
                 print("  clear history       清空消息历史")
                 print("  servers             查看可用MCP服务器")
                 print("  config              修改API参数（写入.env）")
-                print("  mcp-config-generate 生成/编辑mcp_config.json")
+                print("  mcp-config          生成/编辑mcp_config.json")
                 print("  help                显示本帮助")
                 continue
             
             # 重置Ctrl+C状态
             cli_handler.reset_ctrl_c_status()
+            
+            # 处理实际查询
+            try:
+                # 输入可能很长，先显示一下要处理的输入内容
+                if len(query) > 500:
+                    lines = query.count('\n') + 1
+                    print(f"\n{Colors.CYAN}正在处理您的输入 ({len(query)} 字符, {lines} 行)...{Colors.ENDC}")
                 
-            await client.process_query(query, system_prompt%(os_version, workspace, shell_path))
+                await client.process_query(query, system_prompt%(os_version, workspace, shell_path))
+            except Exception as e:
+                print(f"\n{Colors.RED}处理查询时出错: {e}{Colors.ENDC}")
+                if VERBOSE_LOGGING:
+                    traceback.print_exc()
             
         except KeyboardInterrupt:
-            print("\nExiting...")
+            print("\n退出中，正在清理资源...")
+            shutdown_event.set()
+            break
+        except asyncio.CancelledError:
+            # 任务被取消，优雅退出
             break
         except Exception as e:
-            print(f"\nError: {e}")
+            print(f"\n{Colors.RED}Error: {e}{Colors.ENDC}")
+            if VERBOSE_LOGGING:
+                traceback.print_exc()
             print("Continuing...")
 
 
 async def main(workspace=None):
+    global client
     # 设置readline
     setup_readline()
+    
+    # 设置信号处理
+    setup_signal_handlers()
     
     # 打印版本信息和调试信息
     print(f"{Colors.BOLD}{Colors.CYAN}MCP Terminal Client{Colors.ENDC}")
@@ -105,8 +171,19 @@ async def main(workspace=None):
         if VERBOSE_LOGGING:
             traceback.print_exc()
     finally:
-        await client.close()
+        if client:
+            print("\n正在关闭所有连接和资源...")
+            await client.close()
+            print(f"{Colors.GREEN}已安全退出，再见！{Colors.ENDC}")
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        # 如果在asyncio.run期间收到Ctrl+C，确保干净退出
+        print("\n程序被中断，强制退出。")
+    except Exception as e:
+        print(f"{Colors.RED}未处理的异常: {e}{Colors.ENDC}")
+        if VERBOSE_LOGGING:
+            traceback.print_exc() 

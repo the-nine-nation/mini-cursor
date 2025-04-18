@@ -6,13 +6,13 @@ cursor一个月20美金,对于很多人而言,这是一个星期的饭食.cursor
 
 基于此,我们开源了一个使用命令行进行类cursor编程的超轻量级项目,以供各位学习使用.你可以在任意目录下使用mini-cursor ***以该目录为工作区使用AI agent编写程序!
 
-你可以使用该项目收集到优质的tool call数据
+你可以使用该项目收集到优质的tool call数据,也可以在任何地方使用本项目准备好的与cursor基本一致的mcp服务(除却一个检索code的mcp,个人使用时发现效果不大),另外,本项目额外添加了web搜索以及安全连接sql和clickhouse数据库,经过测试,发现诸多模型皆有危险操作可能,因此与数据库相关操作均限制为只读.
 
 ## 特点
 
 - 几乎1:1 复刻 cursor的 MCP 及 Prompt 实现,支持在vscode的其它插件中使用此处的若干mcp服务.
-- 支持本地/远程多工具（MCP）调用
-- 支持 OpenAI/Claude/GLM 等多种大模型
+- 支持本地/远程多工具（MCP）调用.
+- 支持 OpenAI api,允许使用本地模型,保障数据安全.
 - 交互式参数和服务器配置
 - 一键 pip 安装，命令行全局可用
 - 适合二次开发和自定义扩展
@@ -30,6 +30,8 @@ pip install mini_cursor
 ### 方式二：源码安装（开发者/自定义）
 
 ```bash
+conda create -n mini-cursor python=3.10
+conda activate mini-cursor
 git clone https://github.com/the-nine-nation/mini-cursor.git
 cd mini_cursor
 pip install -e .
@@ -37,27 +39,58 @@ pip install -e .
 
 ---
 
-## 快速开始
+## 使用方法
 
 ### 1. 初始化 MCP 配置（强烈推荐，首次使用必做）
 
 ```bash
 mini-cursor init
 ```
-此命令会自动生成 `mini_cursor/core/mcp_config.json`，并自动填充正确的 Python 路径和 MCP 脚本路径。
+此命令会自动生成 `mini_cursor/core/mcp_config.json`，并自动填充正确的 Python 路径和 MCP 脚本路径,但部分参数需自行填写。
+命令行会显示生成的json位置,若要给其它程序使用,复制该json内容即可.
 
-> **注意：** 生成后请务必使用`mini-cursor mcp-config`或直接编辑 `mcp_config.json`，填写你的 `BOCHAAI_API_KEY`，否则联网查询工具无法使用！
+> **注意：** 若要使用联网工具,生成后请务必使用`mini-cursor mcp-config`或直接编辑 `mcp_config.json`，填写你的 `BOCHAAI_API_KEY`.
+
+####使用方法1: 直接使用mcp server
 
 **示例 mcp_config.json 片段：**
 ```json
 {
   "mcpServers": {
-    "default": {
-      "command": "/usr/bin/python3",
-      "args": ["/your/abs/path/mini_cursor/core/cursor_mcp_all.py"],
-      "env": {
-        "BOCHAAI_API_KEY": "sk-xxxx"
-      }
+    "cursor_mcp": {
+        "command": sys.executable,
+        "args": [cursor_mcp_py],
+        "env": {
+            "BOCHAAI_API_KEY": "bochaai的api,请进入https://open.bochaai.com/获取api,使模型能够进行web搜索"
+        }
+    },
+    "mysql": {
+        "command": sys.executable,
+        "args": [mysql_mcp_py],
+        "env": {
+            "MYSQL_ENABLED": "true",
+            "MYSQL_HOST": "mysql数据库的ip",
+            "MYSQL_PORT": "mysql数据库的端口",
+            "MYSQL_DATABASE": "mysql数据库的名称",
+            "MYSQL_USERNAME": "mysql数据库的用户名",
+            "MYSQL_PASSWORD": "mysql数据库的密码",
+            "MYSQL_POOL_MINSIZE": "1",
+            "MYSQL_POOL_MAXSIZE": "10",
+            "MYSQL_RESOURCE_DESC_FILE": "mysql数据库的资源描述文件路径"
+        }
+    },
+    "clickhouse": {
+        "command": sys.executable,
+        "args": [clickhouse_mcp_py],
+        "env": {
+            "CLICKHOUSE_ENABLED": "true",
+            "CLICKHOUSE_HOST": "clickhouse数据库的ip",
+            "CLICKHOUSE_PORT": "clickhouse数据库的端口",
+            "CLICKHOUSE_DATABASE": "clickhouse数据库的名称",
+            "CLICKHOUSE_USERNAME": "clickhouse数据库的用户名",
+            "CLICKHOUSE_PASSWORD": "clickhouse数据库的密码",
+            "CLICKHOUSE_RESOURCE_DESC_FILE": "clickhouse数据库的资源描述文件路径"
+            }
     }
   }
 }
@@ -112,6 +145,32 @@ mini-cursor chat
 
 ---
 
+## 开发指南
+
+### 添加新工具
+
+向MCP系统添加新工具的步骤：
+
+1. 在`cursor_mcp_all.py`中定义工具或创建新的MCP服务器
+2. 使用唯一名称和模式注册工具
+3. 在`mcp_config.json`中配置服务器
+
+### 扩展客户端
+
+模块化架构使扩展功能变得简单：
+
+1. UI更改：修改`display_utils.py`
+2. 新消息处理：扩展`message_manager.py`
+3. 增强工具功能：更新`tool_manager.py`
+4. 额外服务器类型：修改`server_manager.py`
+
+### 自定义提示
+
+自定义系统提示的方法：
+1. 在传递给`process_query`之前修改`cli.py`中的提示
+2. 为不同功能或工具使用不同提示
+
+---
 
 ## Shell 自动补全
 
@@ -135,6 +194,59 @@ eval (mini-cursor completion fish)
 ```
 
 你也可以将补全脚本输出到对应配置文件，实现永久补全。 
+
+---
+
+## 项目结构
+
+项目已经模块化重构，以提高代码的可读性和可维护性。以下是核心架构：
+
+### 核心组件
+
+- **`mcp_client.py`**：主客户端类，整合所有模块并作为入口点
+- **`message_manager.py`**：管理对话历史，包括用户/系统/助手消息
+- **`tool_manager.py`**：处理工具发现、工具调用，并维护工具调用历史
+- **`server_manager.py`**：管理MCP服务器连接和配置
+- **`display_utils.py`**：用于显示工具历史、服务器和消息历史的实用函数
+- **`config.py`**：API密钥、URL和其他设置的中央配置管理
+
+### 模块功能
+
+#### MCPClient (mcp_client.py)
+主客户端类，协调LLM、MCP服务器和用户之间的交互：
+- 管理聊天循环和对话流程
+- 通过LLM处理用户查询
+- 处理流式响应
+- 根据LLM决策编排工具调用
+
+#### MessageManager (message_manager.py)
+负责消息历史管理的所有方面：
+- 添加用户消息和系统提示
+- 跟踪助手响应
+- 记录工具调用及其结果
+- 修剪对话历史以防止上下文溢出
+- 提供清晰的历史记录检索
+
+#### ToolManager (tool_manager.py)
+管理所有与工具相关的功能：
+- 发现并编目所有MCP服务器的可用工具
+- 为每个工具找到合适的服务器
+- 使用超时处理执行工具调用
+- 维护详细的工具调用历史
+- 格式化API调用的工具参数
+
+#### ServerManager (server_manager.py)
+处理与MCP服务器的连接和通信：
+- 从配置文件加载服务器配置
+- 建立与指定服务器的连接
+- 初始化与每个服务器的会话
+- 管理服务器资源和清理
+
+#### DisplayUtils (display_utils.py)
+提供用户友好的显示功能：
+- 工具调用历史的格式化输出
+- 服务器和工具列表
+- 消息历史可视化
 
 ---
 

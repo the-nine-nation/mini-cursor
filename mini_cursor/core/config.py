@@ -2,10 +2,21 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# 自动加载 .env 文件（项目根目录）
-env_path = Path(__file__).parent.parent / ".env"
-if env_path.exists():
-    load_dotenv(dotenv_path=env_path, override=True)
+# 尝试加载多个位置的.env文件
+# 1. 项目根目录
+root_env_path = Path.cwd() / ".env"
+# 2. 包内目录
+package_env_path = Path(__file__).parent.parent / ".env"
+
+# 优先加载当前工作目录中的.env文件，其次是包内的.env文件
+if root_env_path.exists():
+    load_dotenv(dotenv_path=root_env_path, override=True)
+    print(f"已加载环境变量从: {root_env_path}")
+elif package_env_path.exists():
+    load_dotenv(dotenv_path=package_env_path, override=True)
+    print(f"已加载环境变量从: {package_env_path}")
+else:
+    print("未找到.env文件，使用环境变量默认值")
 
 # 添加颜色输出支持
 class Colors:
