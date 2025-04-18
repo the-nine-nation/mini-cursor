@@ -1,5 +1,5 @@
 # Byte-compiled / optimized / DLL files
-/mini-cursor/mcp_config.json
+/mini-cursor/core/mcp_config.json
 
 __pycache__/
 *.py[cod]
@@ -7,6 +7,7 @@ __pycache__/
 *.txt
 # C extensions
 *.so
+test_dev.py
 
 # Distribution / packaging
 .Python

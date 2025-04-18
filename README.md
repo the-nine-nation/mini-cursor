@@ -6,7 +6,9 @@ Cursor costs $20 per month, which is a week's worth of food for many people. Its
 
 Therefore, we open-sourced a super lightweight command-line project for Cursor-like programming, for everyone to learn and use. You can use mini-cursor in any directory to write programs using AI agents with this directory as the workspace!
 
-You can use this project to collect high-quality tool call data, or use the MCP services prepared by this project that are essentially identical to Cursor's (except for a code retrieval MCP, which I found to be not very effective in personal use). Additionally, this project adds web search and secure connections to SQL and ClickHouse databases. After testing, it was found that many models may have dangerous operations, so all database-related operations are restricted to read-only.
+## update
+
+20250418: You can use this project to collect high-quality tool call data, or use the MCP services prepared by this project that are essentially identical to Cursor's (except for a code retrieval MCP, which I found to be not very effective in personal use). Additionally, this project adds web search and secure connections to SQL and ClickHouse databases. After testing, it was found that many models may have dangerous operations, so all database-related operations are restricted to read-only.
 
 ## Features
 

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="mini-cursor",
-    version="0.1.0",
+    version="0.1.1",
     description="None",
     author="Lucas Luo",
     author_email="None",
