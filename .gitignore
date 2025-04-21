@@ -1,5 +1,5 @@
 # Byte-compiled / optimized / DLL files
-/mini-cursor/core/mcp_config.json
+**/mcp_config.json
 
 __pycache__/
 *.py[cod]
@@ -25,7 +25,7 @@ var/
 *.egg
 
 # Virtual environments
-.env
+**/.env
 venv/
 .venv/
 env/

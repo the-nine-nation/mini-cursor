@@ -6,9 +6,13 @@ Cursor costs $20 per month, which is a week's worth of food for many people. Its
 
 Therefore, we open-sourced a super lightweight command-line project for Cursor-like programming, for everyone to learn and use. You can use mini-cursor in any directory to write programs using AI agents with this directory as the workspace!
 
-## update
+This project supports fully local/intranet deployment with no possibility of data leakage to external parties. You can use external APIs or local vllm/ollama services that are compatible with the OpenAI API.
 
-20250418: You can use this project to collect high-quality tool call data, or use the MCP services prepared by this project that are essentially identical to Cursor's (except for a code retrieval MCP, which I found to be not very effective in personal use). Additionally, this project adds web search and secure connections to SQL and ClickHouse databases. After testing, it was found that many models may have dangerous operations, so all database-related operations are restricted to read-only.
+## Update
+
+**20250421**: Added support for inference models like deepseek-r1.
+
+**20250418**: You can use this project to collect high-quality tool call data, or use the MCP services prepared by this project that are essentially identical to Cursor's (except for a code retrieval MCP, which I found to be not very effective in personal use). Additionally, this project adds web search and secure connections to SQL and ClickHouse databases. After testing, it was found that many models may have dangerous operations, so all database-related operations are restricted to read-only.
 
 ## Features
 
@@ -280,26 +284,3 @@ For custom prompts, tools, MCP services, see code comments and `mini_cursor/prom
 ## License
 
 MIT
-
-## Shell 自动补全
-
-mini-cursor 支持命令自动补全（bash/zsh/fish）。
-
-生成并加载补全脚本示例：
-
-### Zsh
-```sh
-eval "$(mini-cursor completion zsh)"
-```
-
-### Bash
-```sh
-eval "$(mini-cursor completion bash)"
-```
-
-### Fish
-```sh
-eval (mini-cursor completion fish)
-```
-
-你也可以将补全脚本输出到对应配置文件，实现永久补全。
