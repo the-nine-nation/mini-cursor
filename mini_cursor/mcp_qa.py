@@ -92,7 +92,14 @@ async def chat_loop(client, cli_handler, workspace):
                 continue
             
             if query.lower() == 'config':
-                config_main()
+                config_updated = config_main()
+                if config_updated:
+                    print(f"{Colors.CYAN}配置已更新，正在重新加载...{Colors.ENDC}")
+                    client.update_config()
+                    # 显示当前模型是否为支持思考的模型
+                    current_model = os.environ.get("OPENAI_MODEL", "").lower()
+                    if "deepseek-r1" in current_model:
+                        print(f"{Colors.GREEN}当前使用的是支持思考过程显示的模型: {current_model}{Colors.ENDC}")
                 continue
                 
             if query.lower() == 'mcp-config':

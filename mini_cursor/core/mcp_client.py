@@ -1,7 +1,8 @@
 import json
 from openai import AsyncOpenAI
+import os
 
-from mini_cursor.core.config import Colors, OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
+from mini_cursor.core.config import Colors, OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, VERBOSE_LOGGING
 from mini_cursor.core.tool_manager import ToolManager
 from mini_cursor.core.message_manager import MessageManager
 from mini_cursor.core.server_manager import ServerManager
@@ -13,10 +14,25 @@ class MCPClient:
         self.server_manager = ServerManager()
         self.tool_manager = ToolManager()
         self.message_manager = MessageManager()
+        self.init_openai_client()
+    
+    def init_openai_client(self):
+        """初始化OpenAI客户端，使用当前配置的API密钥和基础URL"""
         self.client = AsyncOpenAI(
             base_url=OPENAI_BASE_URL,
             api_key=OPENAI_API_KEY,
         )
+    
+    def update_config(self):
+        """更新客户端配置，从环境变量重新加载设置并重新初始化客户端"""
+        from mini_cursor.core.config import init_config, OPENAI_MODEL, OPENAI_BASE_URL
+        config = init_config()
+        print(f"\n{Colors.GREEN}重新加载配置成功{Colors.ENDC}")
+        print(f"{Colors.CYAN}OpenAI API Base URL: {config['OPENAI_BASE_URL']}{Colors.ENDC}")
+        print(f"{Colors.CYAN}Using model: {config['OPENAI_MODEL']}{Colors.ENDC}")
+        
+        # 重新初始化OpenAI客户端
+        self.init_openai_client()
     
     async def connect_to_servers(self):
         """连接到配置的所有MCP服务器"""
@@ -30,11 +46,17 @@ class MCPClient:
         # 收集所有服务器的工具
         all_tools = self.tool_manager.get_all_tools()
 
+        # 检查当前模型是否支持显示思考过程（如deepseek-r1）
+        from mini_cursor.core.config import OPENAI_MODEL
+
         final_text = []
         
         try:
             # 初始化 LLM API 调用，使用流式响应
             if stream:
+                # 确保使用最新的模型配置
+                from mini_cursor.core.config import OPENAI_MODEL
+                
                 stream_response = await self.client.chat.completions.create(
                     model=OPENAI_MODEL,
                     messages=messages,
@@ -44,6 +66,7 @@ class MCPClient:
                 
                 # 处理流式响应
                 collected_content = ""
+                collected_reasoning = ""
                 tool_calls = []
                 
                 print(f"\n{Colors.BOLD}{Colors.CYAN}Response:{Colors.ENDC} ", end="", flush=True)
@@ -54,6 +77,38 @@ class MCPClient:
                     if delta.content:
                         print(f"{delta.content}", end="", flush=True)
                         collected_content += delta.content
+                    
+                    # 处理 reasoning_content（思考过程，deepseek-r1等模型会返回）
+                    reasoning_chunk = None
+                    if hasattr(delta, 'message') and hasattr(delta.message, 'reasoning_content'):
+                        reasoning_chunk = delta.message.reasoning_content
+                    elif hasattr(delta, 'reasoning_content') and delta.reasoning_content:
+                        reasoning_chunk = delta.reasoning_content
+                        
+                    # 如果有思考内容，流式显示
+                    if reasoning_chunk:
+                        # 第一次收到思考内容时显示标题
+                        if not collected_reasoning:
+                            print(f"\n{Colors.BOLD}{Colors.YELLOW}[思考过程]{Colors.ENDC} ", end="", flush=True)
+                        # 显示增量思考内容
+                        print(f"{Colors.YELLOW}{reasoning_chunk}{Colors.ENDC}", end="", flush=True)
+                        # 累加到收集的思考内容中
+                        collected_reasoning += reasoning_chunk
+                    
+                    # 用于诊断的代码 - 仅在VERBOSE_LOGGING为True时才会执行
+                    if VERBOSE_LOGGING and chunk.choices[0] and os.environ.get("DEBUG_CHUNKS", "0") == "1":
+                        try:
+                            # 尝试将delta转换为字典来查看其结构
+                            delta_dict = {}
+                            if hasattr(chunk.choices[0], 'model_dump'):
+                                delta_dict = json.loads(json.dumps(chunk.choices[0].model_dump()))
+                            elif hasattr(chunk.choices[0], 'to_dict'): 
+                                delta_dict = chunk.choices[0].to_dict()
+                            
+                            if delta_dict and 'delta' in delta_dict and delta_dict['delta']:
+                                print(f"\n{Colors.DIM}[DEBUG] Chunk structure: {json.dumps(delta_dict)}{Colors.ENDC}", flush=True)
+                        except Exception as e:
+                            print(f"\n{Colors.DIM}[DEBUG] Failed to dump chunk: {e}{Colors.ENDC}", flush=True)
                     
                     # 处理工具调用部分
                     if delta.tool_calls:
@@ -74,8 +129,21 @@ class MCPClient:
                                     tool_calls[tool_call_id]["function"]["arguments"] += tool_call_delta.function.arguments
                 
                 # 完成流式处理，构建最终消息
+                collected_reasoning_content = ""
+                
+                # 用于收集整个流式过程中可能的reasoning_content（针对可能的完整回传情况）
+                for chunk in stream_response.__dict__.get('_response_data', {}).get('choices', []):
+                    if chunk.get('delta', {}).get('reasoning_content'):
+                        collected_reasoning_content += chunk['delta']['reasoning_content']
+                
+                # 如果前面流式过程中没有收集到reasoning_content但最终数据里有，则显示
+                if not collected_reasoning and collected_reasoning_content:
+                    print(f"\n{Colors.BOLD}{Colors.YELLOW}[思考过程]{Colors.ENDC} {Colors.YELLOW}{collected_reasoning_content}{Colors.ENDC}", flush=True)
+                    collected_reasoning = collected_reasoning_content
+                
                 message = type('obj', (object,), {
                     'content': collected_content,
+                    'reasoning_content': collected_reasoning if collected_reasoning else None,
                     'tool_calls': [type('obj', (object,), {
                         'id': t["id"],
                         'function': type('obj', (object,), {
@@ -91,18 +159,26 @@ class MCPClient:
                     self.message_manager.add_assistant_message(collected_content)
             else:
                 # 非流式处理
+                # 确保使用最新的模型配置
+                from mini_cursor.core.config import OPENAI_MODEL
+                    
                 response = await self.client.chat.completions.create(
                     model=OPENAI_MODEL,
                     messages=messages,
                     tools=all_tools
                 )
                 message = response.choices[0].message
+                
+                # 处理content内容
                 if message.content:
                     print(f"\nResponse: {message.content}")
-                    final_text.append(message.content or "")
-                    
+                    final_text.append(message.content)
                     # 将结果添加到消息历史
                     self.message_manager.add_assistant_message(message.content)
+                
+                # 处理思考过程（不管有没有content，都处理reasoning_content）  
+                if hasattr(message, 'reasoning_content') and message.reasoning_content:
+                    print(f"\n{Colors.BOLD}{Colors.YELLOW}[思考过程]{Colors.ENDC} {Colors.YELLOW}{message.reasoning_content}{Colors.ENDC}", flush=True)
             
             # 处理工具调用
             while hasattr(message, 'tool_calls') and message.tool_calls:
@@ -148,6 +224,9 @@ class MCPClient:
                 messages = self.message_manager.get_messages()
                 
                 if stream:
+                    # 确保使用最新的模型配置
+                    from mini_cursor.core.config import OPENAI_MODEL
+                    
                     stream_response = await self.client.chat.completions.create(
                         model=OPENAI_MODEL,
                         messages=messages,
@@ -156,6 +235,7 @@ class MCPClient:
                     )
                     
                     collected_content = ""
+                    collected_reasoning = ""
                     tool_calls = []
                     
                     print(f"\n{Colors.BOLD}{Colors.CYAN}Response:{Colors.ENDC} ", end="", flush=True)
@@ -166,6 +246,38 @@ class MCPClient:
                         if delta.content:
                             print(f"{delta.content}", end="", flush=True)
                             collected_content += delta.content
+                        
+                        # 处理 reasoning_content（思考过程，deepseek-r1等模型会返回）
+                        reasoning_chunk = None
+                        if hasattr(delta, 'message') and hasattr(delta.message, 'reasoning_content'):
+                            reasoning_chunk = delta.message.reasoning_content
+                        elif hasattr(delta, 'reasoning_content') and delta.reasoning_content:
+                            reasoning_chunk = delta.reasoning_content
+                        
+                        # 如果有思考内容，流式显示
+                        if reasoning_chunk:
+                            # 第一次收到思考内容时显示标题
+                            if not collected_reasoning:
+                                print(f"\n{Colors.BOLD}{Colors.YELLOW}[思考过程]{Colors.ENDC} ", end="", flush=True)
+                            # 显示增量思考内容
+                            print(f"{Colors.YELLOW}{reasoning_chunk}{Colors.ENDC}", end="", flush=True)
+                            # 累加到收集的思考内容中
+                            collected_reasoning += reasoning_chunk
+                        
+                        # 用于诊断的代码 - 仅在VERBOSE_LOGGING为True时才会执行
+                        if VERBOSE_LOGGING and chunk.choices[0] and os.environ.get("DEBUG_CHUNKS", "0") == "1":
+                            try:
+                                # 尝试将delta转换为字典来查看其结构
+                                delta_dict = {}
+                                if hasattr(chunk.choices[0], 'model_dump'):
+                                    delta_dict = json.loads(json.dumps(chunk.choices[0].model_dump()))
+                                elif hasattr(chunk.choices[0], 'to_dict'): 
+                                    delta_dict = chunk.choices[0].to_dict()
+                                
+                                if delta_dict and 'delta' in delta_dict and delta_dict['delta']:
+                                    print(f"\n{Colors.DIM}[DEBUG] Chunk structure: {json.dumps(delta_dict)}{Colors.ENDC}", flush=True)
+                            except Exception as e:
+                                print(f"\n{Colors.DIM}[DEBUG] Failed to dump chunk: {e}{Colors.ENDC}", flush=True)
                         
                         # 处理工具调用部分
                         if delta.tool_calls:
@@ -186,8 +298,21 @@ class MCPClient:
                                         tool_calls[tool_call_id]["function"]["arguments"] += tool_call_delta.function.arguments
                     
                     # 完成流式处理，构建最终消息
+                    collected_reasoning_content = ""
+                    
+                    # 用于收集整个流式过程中可能的reasoning_content（针对可能的完整回传情况）
+                    for chunk in stream_response.__dict__.get('_response_data', {}).get('choices', []):
+                        if chunk.get('delta', {}).get('reasoning_content'):
+                            collected_reasoning_content += chunk['delta']['reasoning_content']
+                    
+                    # 如果前面流式过程中没有收集到reasoning_content但最终数据里有，则显示
+                    if not collected_reasoning and collected_reasoning_content:
+                        print(f"\n{Colors.BOLD}{Colors.YELLOW}[思考过程]{Colors.ENDC} {Colors.YELLOW}{collected_reasoning_content}{Colors.ENDC}", flush=True)
+                        collected_reasoning = collected_reasoning_content
+                    
                     message = type('obj', (object,), {
                         'content': collected_content,
+                        'reasoning_content': collected_reasoning if collected_reasoning else None,
                         'tool_calls': [type('obj', (object,), {
                             'id': t["id"],
                             'function': type('obj', (object,), {
@@ -203,18 +328,26 @@ class MCPClient:
                         self.message_manager.add_assistant_message(collected_content)
                 else:
                     # 非流式处理
+                    # 确保使用最新的模型配置
+                    from mini_cursor.core.config import OPENAI_MODEL
+                    
                     response = await self.client.chat.completions.create(
                         model=OPENAI_MODEL,
                         messages=messages,
                         tools=all_tools
                     )
                     message = response.choices[0].message
+                    
+                    # 处理content内容
                     if message.content:
                         print(f"\nResponse: {message.content}")
                         final_text.append(message.content)
+                        # 将结果添加到消息历史
+                        self.message_manager.add_assistant_message(message.content)
                     
-                    # 将结果添加到消息历史
-                    self.message_manager.add_assistant_message(message.content)
+                    # 处理思考过程（不管有没有content，都处理reasoning_content）  
+                    if hasattr(message, 'reasoning_content') and message.reasoning_content:
+                        print(f"\n{Colors.BOLD}{Colors.YELLOW}[思考过程]{Colors.ENDC} {Colors.YELLOW}{message.reasoning_content}{Colors.ENDC}", flush=True)
             
             return "\n".join(final_text)
             

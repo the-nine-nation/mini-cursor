@@ -115,6 +115,7 @@ CONFIG_VARS = [
 def config_main():
     """
     交互式参数修改界面，支持将参数写入 .env 文件。
+    返回: (bool) 是否更新了配置
     """
     print(f"{Colors.HEADER}参数修改界面 (写入 .env 文件){Colors.ENDC}")
     # 加载现有 .env
@@ -134,9 +135,11 @@ def config_main():
             print(f"{Colors.GREEN}已更新 {var}{Colors.ENDC}")
             updated = True
     if updated:
-        print(f"{Colors.GREEN}.env 文件已更新。请重启终端或应用以生效。{Colors.ENDC}")
+        print(f"{Colors.GREEN}.env 文件已更新。{Colors.ENDC}")
     else:
         print(f"{Colors.YELLOW}未做任何更改。{Colors.ENDC}")
+    
+    return updated
 
 def mcp_config_generate_main():
     """

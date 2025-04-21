@@ -25,6 +25,8 @@ def mcp_config():
 def chat():
     """进入聊天模式"""
     workspace = os.getcwd()
+    # 提示用户可以开启详细调试
+    print("提示: 设置环境变量 DEBUG_CHUNKS=1 可以显示详细的响应结构（用于调试）")
     asyncio.run(qa_main(workspace=workspace))
 
 @cli.command()
