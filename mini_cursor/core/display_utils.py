@@ -17,18 +17,34 @@ def display_tool_history(tool_history):
             print(f"   {Colors.RED}Error: {record['error']}{Colors.ENDC}")
     print(f"{Colors.CYAN}{'=' * 30}{Colors.ENDC}")
 
-def display_servers(server_tools):
+def display_servers(server_tools, tool_manager=None):
     """显示连接的MCP服务器和它们的工具"""
     if not server_tools:
         print(f"{Colors.YELLOW}No MCP servers connected{Colors.ENDC}")
         return
         
     print(f"\n{Colors.BOLD}{Colors.CYAN}===== Connected MCP Servers ====={Colors.ENDC}")
+    
+    # 如果提供了tool_manager，显示当前模式
+    if tool_manager:
+        mode = tool_manager.tool_enablement_mode
+        mode_desc = "全部工具默认启用" if mode == "all" else "选择性启用工具"
+        print(f"{Colors.CYAN}工具启用模式: {Colors.YELLOW}{mode} ({mode_desc}){Colors.ENDC}")
+    
     for server_name, tools in server_tools.items():
         print(f"{Colors.BOLD}{server_name}{Colors.ENDC} ({len(tools)} tools)")
         for tool_name in sorted(tools.keys()):
             tool = tools[tool_name]
-            print(f"  • {Colors.YELLOW}{tool_name}{Colors.ENDC}: {tool.description[:60]}...")
+            
+            # 检查工具是否启用
+            enabled = True
+            if tool_manager:
+                enabled = tool_manager.is_tool_enabled(tool_name)
+            
+            # 根据启用状态显示不同的颜色标记
+            status_mark = f"{Colors.GREEN}[✓]" if enabled else f"{Colors.RED}[✗]"
+            
+            print(f"  {status_mark} {Colors.YELLOW}{tool_name}{Colors.ENDC}: {tool.description[:60]}...")
     print(f"{Colors.CYAN}{'=' * 30}{Colors.ENDC}")
 
 def display_message_history(message_history):

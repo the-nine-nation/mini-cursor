@@ -98,6 +98,7 @@ class CLIHandler:
         print("Type 'history' to view tool call history.")
         print("Type 'message history' to view conversation history.")
         print("Type 'clear history' to clear conversation history.")
+        print("Type 'enable <tool>' or 'disable <tool>' to manage available tools.")
         print("Press Ctrl+C twice to force exit if a command hangs.")
     
     def reset_ctrl_c_status(self) -> None:

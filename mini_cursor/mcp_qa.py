@@ -116,6 +116,41 @@ async def chat_loop(client, cli_handler, workspace):
                 print("  config              修改API参数（写入.env）")
                 print("  mcp-config          生成/编辑mcp_config.json")
                 print("  help                显示本帮助")
+                print("\n工具管理命令:")
+                print("  enable <tool>       启用特定工具")
+                print("  disable <tool>      禁用特定工具")
+                print("  enable-all          启用所有工具")
+                print("  disable-all         禁用所有工具")
+                print("  mode <all|selective> 设置工具启用模式")
+                continue
+            
+            # 处理工具管理命令
+            if query.lower().startswith('enable ') and len(query.split()) >= 2:
+                tool_name = query.split(None, 1)[1].strip()
+                client.enable_tool(tool_name)
+                continue
+                
+            if query.lower().startswith('disable ') and len(query.split()) >= 2:
+                tool_name = query.split(None, 1)[1].strip()
+                client.disable_tool(tool_name)
+                continue
+                
+            if query.lower() == 'enable-all':
+                client.enable_all_tools()
+                print(f"{Colors.GREEN}已启用所有工具{Colors.ENDC}")
+                continue
+                
+            if query.lower() == 'disable-all':
+                client.disable_all_tools()
+                print(f"{Colors.GREEN}已禁用所有工具{Colors.ENDC}")
+                continue
+                
+            if query.lower().startswith('mode ') and len(query.split()) >= 2:
+                mode = query.split(None, 1)[1].strip().lower()
+                if mode in ['all', 'selective']:
+                    client.set_tool_enablement_mode(mode)
+                else:
+                    print(f"{Colors.RED}无效的模式: {mode}. 必须是 'all' 或 'selective'{Colors.ENDC}")
                 continue
             
             # 重置Ctrl+C状态

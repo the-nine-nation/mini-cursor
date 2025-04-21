@@ -19,6 +19,7 @@ This project supports fully local/intranet deployment with no possibility of dat
 - Nearly 1:1 reimplementation of Cursor's MCP and Prompt, supports using these MCP services in other VSCode plugins.
 - Supports local/remote multi-tool (MCP) invocation
 - Supports OpenAI API, allows using local models, ensuring data security.
+- **Selective tool enablement**: Choose which tools to use for each session
 - Interactive parameter and server configuration
 - One-click pip install, globally available CLI
 - Great for secondary development and custom extensions
@@ -148,6 +149,13 @@ mini-cursor chat
 - `help`                Show help
 - `quit`                Exit chat
 
+**Tool management commands:**
+- `enable <tool>`       Enable a specific tool
+- `disable <tool>`      Disable a specific tool
+- `enable-all`          Enable all tools
+- `disable-all`         Disable all tools
+- `mode <all|selective>` Set the tool enablement mode
+
 ---
 
 ## Project Structure
@@ -187,6 +195,7 @@ Manages all tool-related functionality:
 - Executes tool calls with timeout handling
 - Maintains detailed tool call history
 - Formats tool parameters for API calls
+- **Manages tool enablement/disablement** for selective tool usage
 
 #### ServerManager (server_manager.py)
 Handles connection and communication with MCP servers:
@@ -260,6 +269,7 @@ You can also output the completion script to the corresponding config file for p
 - **Support for multiple LLMs:** Just change `OPENAI_MODEL` and `OPENAI_BASE_URL` in `.env`.
 - **Custom tools/servers:** Use `mini-cursor mcp-config` to add local or remote Python services.
 - **Tool extension:** Supports file read/write, code editing, terminal commands, web search, etc. See `mini_cursor/core/tool_specs.json` for details.
+- **Selective tool usage:** Control which tools are enabled using `enable <tool>`, `disable <tool>`, or set the mode with `mode <all|selective>`. This allows for more controlled, secure, and focused tool usage.
 
 ---
 

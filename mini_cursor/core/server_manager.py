@@ -95,15 +95,9 @@ class ServerManager:
                 
             print(f"\n{Colors.GREEN}Connected to {len(connected_servers)} MCP servers: {', '.join(connected_servers)}{Colors.ENDC}")
             
-            # 创建所有工具的合并列表用于调试
-            all_tools = {}
-            for server_name, tools in tool_manager.server_tools.items():
-                for tool_name, tool in tools.items():
-                    if tool_name in all_tools:
-                        print(f"{Colors.YELLOW}Warning: Tool '{tool_name}' is provided by multiple servers{Colors.ENDC}")
-                    all_tools[tool_name] = (server_name, tool)
-            
-            print(f"Total available tools: {len(all_tools)}")
+            # 构建并缓存所有工具的列表，以便在process_query中使用
+            all_tools_count = len(tool_manager.refresh_tools_cache())
+            print(f"Total available tools: {all_tools_count}")
             
         except Exception as e:
             print(f"\n{Colors.RED}Error connecting to MCP servers: {e}{Colors.ENDC}")

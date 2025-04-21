@@ -21,6 +21,7 @@ cursor一个月20美金,对于很多人而言,这是一个星期的饭食.cursor
 - 几乎1:1 复刻 cursor的 MCP 及 Prompt 实现,支持在vscode的其它插件中使用此处的若干mcp服务.
 - 支持本地/远程多工具（MCP）调用.
 - 支持 OpenAI api,允许使用本地模型,保障数据安全.
+- **选择性工具启用**: 可以为每个会话选择要使用的工具
 - 交互式参数和服务器配置
 - 一键 pip 安装，命令行全局可用
 - 适合二次开发和自定义扩展
@@ -151,6 +152,13 @@ mini-cursor chat
 - `help`                显示帮助
 - `quit`                退出聊天
 
+**工具管理命令：**
+- `enable <tool>`       启用特定工具
+- `disable <tool>`      禁用特定工具
+- `enable-all`          启用所有工具
+- `disable-all`         禁用所有工具
+- `mode <all|selective>` 设置工具启用模式（all:默认全部启用，selective:选择性启用）
+
 ---
 
 ## 开发指南
@@ -169,7 +177,7 @@ mini-cursor chat
 
 1. UI更改：修改`display_utils.py`
 2. 新消息处理：扩展`message_manager.py`
-3. 增强工具功能：更新`tool_manager.py`
+3. 增强工具功能：更新`tool_manager.py`，包括**工具启用/禁用管理**
 4. 额外服务器类型：修改`server_manager.py`
 
 ### 自定义提示
@@ -242,6 +250,7 @@ eval (mini-cursor completion fish)
 - 使用超时处理执行工具调用
 - 维护详细的工具调用历史
 - 格式化API调用的工具参数
+- **管理工具的启用/禁用状态**，实现选择性工具使用
 
 #### ServerManager (server_manager.py)
 处理与MCP服务器的连接和通信：
@@ -263,6 +272,7 @@ eval (mini-cursor completion fish)
 - **支持多种大模型**：只需在 `.env` 里切换 `OPENAI_MODEL` 和 `OPENAI_BASE_URL`。
 - **自定义工具/服务器**：编辑 `mini-cursor mcp-config`，可添加本地或远程 Python 服务。
 - **工具扩展**：支持文件读写、代码编辑、终端命令、Web 搜索等多种工具，详见 `mini_cursor/core/tool_specs.json`。
+- **选择性工具使用**：通过 `enable <tool>`、`disable <tool>` 控制工具启用状态，或使用 `mode <all|selective>` 设置启用模式。这允许更受控、更安全、更专注的工具使用体验。
 
 ---
 

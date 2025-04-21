@@ -43,7 +43,7 @@ class MCPClient:
         # 添加新的用户查询到消息历史
         messages = self.message_manager.add_user_message(query, system_prompt)
         
-        # 收集所有服务器的工具
+        # 使用工具管理器获取缓存的工具列表（只有在必要时才会重建）
         all_tools = self.tool_manager.get_all_tools()
 
         # 检查当前模型是否支持显示思考过程（如deepseek-r1）
@@ -362,7 +362,7 @@ class MCPClient:
     
     def display_servers(self):
         """显示连接的MCP服务器和它们的工具"""
-        display_servers(self.tool_manager.server_tools)
+        display_servers(self.tool_manager.server_tools, self.tool_manager)
     
     def display_message_history(self):
         """显示当前的消息历史"""
@@ -371,6 +371,30 @@ class MCPClient:
     def clear_message_history(self):
         """清除消息历史记录，只保留系统消息"""
         self.message_manager.clear_message_history()
+    
+    def enable_tool(self, tool_name):
+        """启用特定工具"""
+        return self.tool_manager.enable_tool(tool_name)
+    
+    def disable_tool(self, tool_name):
+        """禁用特定工具"""
+        return self.tool_manager.disable_tool(tool_name)
+    
+    def set_tool_enablement_mode(self, mode):
+        """设置工具启用模式"""
+        return self.tool_manager.set_tool_enablement_mode(mode)
+    
+    def enable_all_tools(self):
+        """启用所有工具"""
+        self.tool_manager.enable_all_tools()
+    
+    def disable_all_tools(self):
+        """禁用所有工具"""
+        self.tool_manager.disable_all_tools()
+    
+    def get_all_available_tools(self):
+        """获取所有可用工具及其状态"""
+        return self.tool_manager.get_all_available_tools()
     
     async def close(self):
         """清理资源"""
