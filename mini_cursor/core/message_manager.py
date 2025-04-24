@@ -36,30 +36,33 @@ class MessageManager:
         
         return self.message_history
     
-    def add_assistant_message(self, content):
-        """添加助手消息到历史记录"""
+    def add_assistant_message(self, content, tool_calls=None):
+        """添加助手消息到历史记录, 可选包含工具调用"""
+        message = {"role": "assistant"}
         if content:
-            self.message_history.append({
-                "role": "assistant",
-                "content": content
-            })
-        return self.message_history
-    
-    def add_tool_call(self, tool_call, tool_name, tool_args):
-        """添加工具调用到历史记录"""
-        self.message_history.append({
-            "role": "assistant",
-            "tool_calls": [
-                {
-                    "id": tool_call.id,
-                    "type": "function",
-                    "function": {
-                        "name": tool_name,
-                        "arguments": tool_args
-                    }
-                }
-            ]
-        })
+            message["content"] = content
+        if tool_calls:
+             # Ensure tool_calls are in the correct format expected by OpenAI API
+             formatted_tool_calls = []
+             for tc in tool_calls:
+                 # Assuming tc is already in a dict-like structure 
+                 # from stream parsing or non-stream response
+                 # Handle both attribute access (for objects) and key access (for dicts)
+                 func = getattr(tc, 'function', tc.get('function')) if hasattr(tc, 'function') or isinstance(tc, dict) else None
+                 formatted_tool_calls.append({
+                     "id": getattr(tc, 'id', tc.get('id')) if hasattr(tc, 'id') or isinstance(tc, dict) else None,
+                     "type": "function", 
+                     "function": {
+                         "name": getattr(func, 'name', func.get('name')) if hasattr(func, 'name') or isinstance(func, dict) else None,
+                         "arguments": getattr(func, 'arguments', func.get('arguments')) if hasattr(func, 'arguments') or isinstance(func, dict) else None
+                     }
+                 })
+             message["tool_calls"] = formatted_tool_calls
+             
+        # Only add if there's content or tool_calls
+        if content or tool_calls:
+             self.message_history.append(message)
+             
         return self.message_history
     
     def add_tool_result(self, tool_call_id, result_content):

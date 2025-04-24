@@ -41,7 +41,7 @@ DB_CONFIG = {
     "username": os.environ.get("CLICKHOUSE_USERNAME", "default"),
     "password": os.environ.get("CLICKHOUSE_PASSWORD", ""),
     "use_http": "true",  # 强制使用HTTP模式，因为配置的是HTTP端口
-    "max_rows": int(os.environ.get("MAX_ROWS", "10")),  # 默认每次查询最多返回10行
+    "max_rows": int(os.environ.get("MAX_ROWS", "10")),  # 默认每次查询最多返回50行
     "resource_desc_file": os.environ.get("CLICKHOUSE_RESOURCE_DESC_FILE", ""),  # 资源描述文件路径（必需）
 }
 
@@ -117,21 +117,20 @@ tool_specs = [
     },
     {
         "name": "clickhouse_get_table_schema",
-        "description": "Get the schema for a specific ClickHouse table",
+        "description": "Get the schema for a ClickHouse table. If no table name is provided or '*' is used, it will return a list of all available tables in the database.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "table_name": {
                     "type": "string",
-                    "description": "The name of the table to get schema for"
+                    "description": "The name of the table to get schema for. Leave empty or use '*' to list all tables."
                 },
                 "max_rows": {
                     "type": "integer",
                     "description": "Maximum number of rows to return",
                     "default": DB_CONFIG["max_rows"]
                 }
-            },
-            "required": ["table_name"]
+            }
         }
     }
 ]
@@ -434,6 +433,11 @@ def format_query_results(result: Dict) -> str:
     if not result.get("data"):
         return f"Query executed. Rows returned: {result.get('row_count', 0)}"
         
+    # 检查是否有错误信息，并作为纯文本显示
+    if result.get("error"):
+        # 对于错误消息，直接以纯文本返回，保留所有换行符
+        return f"Error: {result.get('error')}"
+        
     # 格式化为表格
     output = []
     column_names = result.get("column_names", [])
@@ -469,16 +473,24 @@ def format_query_results(result: Dict) -> str:
             # 针对列表数据
             for i, value in enumerate(row):
                 if i < len(widths):
-                    widths[i] = max(widths[i], len(str(value)))
+                    # 确保我们正确处理值中的换行符
+                    str_value = str(value)
+                    # 计算列宽时要考虑字符串中可能的换行符
+                    max_line_len = max([len(line) for line in str_value.split('\n')]) if '\n' in str_value else len(str_value)
+                    widths[i] = max(widths[i], max_line_len)
         elif isinstance(row, dict):
             # 针对字典数据
             for i, col in enumerate(column_names):
                 if i < len(widths):
                     value = str(row.get(col, ''))
-                    widths[i] = max(widths[i], len(value))
+                    # 计算列宽时要考虑字符串中可能的换行符
+                    max_line_len = max([len(line) for line in value.split('\n')]) if '\n' in value else len(value)
+                    widths[i] = max(widths[i], max_line_len)
         else:
             # 单值处理
-            widths[0] = max(widths[0], len(str(row)))
+            str_value = str(row)
+            max_line_len = max([len(line) for line in str_value.split('\n')]) if '\n' in str_value else len(str_value)
+            widths[0] = max(widths[0], max_line_len)
     
     # 创建表头
     if column_names:
@@ -495,7 +507,20 @@ def format_query_results(result: Dict) -> str:
             row_values = []
             for i, value in enumerate(row):
                 if i < len(widths):
-                    row_values.append(str(value).ljust(widths[i]))
+                    # 如果值中有换行符，需要特殊处理
+                    str_value = str(value)
+                    if '\n' in str_value:
+                        # 对于多行内容，我们保留原始换行符
+                        # 缩进后续行以对齐
+                        lines = str_value.split('\n')
+                        first_line = lines[0].ljust(widths[i])
+                        padding = ' ' * (len(" | ".join([""] * i)) + 3)
+                        continuation = '\n'.join([f"{padding}{line}" for line in lines[1:]])
+                        row_values.append(first_line)
+                        if continuation:
+                            row_values[-1] = f"{row_values[-1]}\n{continuation}"
+                    else:
+                        row_values.append(str_value.ljust(widths[i]))
             row_str = " | ".join(row_values)
         elif isinstance(row, dict):
             # 字典格式
@@ -503,7 +528,17 @@ def format_query_results(result: Dict) -> str:
             for i, col in enumerate(column_names):
                 if i < len(widths):
                     value = str(row.get(col, ''))
-                    row_values.append(value.ljust(widths[i]))
+                    if '\n' in value:
+                        # 对于多行内容，保留原始换行符
+                        lines = value.split('\n')
+                        first_line = lines[0].ljust(widths[i])
+                        padding = ' ' * (len(" | ".join([""] * i)) + 3)
+                        continuation = '\n'.join([f"{padding}{line}" for line in lines[1:]])
+                        row_values.append(first_line)
+                        if continuation:
+                            row_values[-1] = f"{row_values[-1]}\n{continuation}"
+                    else:
+                        row_values.append(value.ljust(widths[i]))
             row_str = " | ".join(row_values)
         else:
             # 单值
@@ -514,7 +549,8 @@ def format_query_results(result: Dict) -> str:
     output.append("")
     output.append(f"Total rows: {result['row_count']} (showing first {len(data)})")
     
-    return "\n".join(output)
+    # 包装在<pre>标签中以确保在Web界面保留换行符和格式
+    return "<pre>" + "\n".join(output) + "</pre>"
 
 # --- Tool Implementations ---
 
@@ -522,7 +558,8 @@ async def tool_clickhouse_execute_read_query(args: dict) -> str:
     try:
         query = args["query"]
         params = args.get("params", {})
-        max_rows = args.get("max_rows", DB_CONFIG["max_rows"])
+        # Cap max_rows at 50
+        max_rows = min(args.get("max_rows", DB_CONFIG["max_rows"]), 50)
                     
         # 执行查询
         return await execute_db_query(query, params, max_rows)
@@ -535,16 +572,27 @@ async def tool_clickhouse_execute_read_query(args: dict) -> str:
 
 async def tool_clickhouse_get_table_schema(args: dict) -> str:
     try:
-        table_name = args["table_name"]
-        max_rows = args.get("max_rows", DB_CONFIG["max_rows"])
+        table_name = args.get("table_name", "")
+        # Cap max_rows at 50
+        max_rows = min(args.get("max_rows", DB_CONFIG["max_rows"]), 50)
+        
+        # 检查表名是否有效
+        if not table_name or table_name.strip() == "*":
+            # 如果没有提供表名或者使用了通配符，返回所有表
+            query = f"SHOW TABLES FROM {DB_CONFIG['database']}"
+            logger.info(f"No specific table name provided, listing all tables with query: {query}")
+            result = await execute_db_query(query, {}, max_rows)
+            return f"Available tables in database {DB_CONFIG['database']}:\n{result}"
         
         # 获取连接
         conn = get_connection()
         if not conn:
             return f"Error: Could not connect to ClickHouse database"
         
-        # 使用DESCRIBE语句获取表结构
+        # 使用DESCRIBE语句获取表结构，确保表名已被正确引用
+        table_name = table_name.strip()
         query = f"DESCRIBE TABLE {table_name}"
+        logger.info(f"Getting schema for table {table_name} with query: {query}")
         
         # 使用通用查询处理逻辑
         result = await execute_db_query(query, {}, max_rows)
@@ -753,8 +801,22 @@ async def handle_call_tool(name: str, arguments: dict[str, Any] | None) -> list[
             result = await tool_clickhouse_get_table_schema(arguments)
         else:
             result = f"Unknown tool: {name}"
+        
+        # 检查结果是否包含HTML标签，特别是<pre>标签
+        if result.startswith("<pre>") and result.endswith("</pre>"):
+            # 这是已经格式化为HTML的内容
+            html_content = result
+            # 从HTML中提取纯文本用于可能的其他处理
+            text_content = result[5:-6]  # 去掉<pre>和</pre>标签
             
-        return [types.TextContent(type="text", text=result)]
+            return [types.TextContent(
+                type="text", 
+                text=text_content,
+                annotations=None
+            )]
+        else:
+            # 普通文本内容，不需要特殊处理
+            return [types.TextContent(type="text", text=result)]
     except Exception as e:
         return [types.TextContent(type="text", text=f"Error: {str(e)}")]
 

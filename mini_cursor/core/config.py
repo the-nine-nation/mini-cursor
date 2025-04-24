@@ -21,9 +21,9 @@ OPENAI_BASE_URL = None
 OPENAI_MODEL = None
 
 # 设置超时时间（秒）
-TOOL_CALL_TIMEOUT = 30
+TOOL_CALL_TIMEOUT = 15
 # 设置是否显示详细日志
-VERBOSE_LOGGING = True
+VERBOSE_LOGGING = False
 # MCP配置文件
 MCP_CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "core", "mcp_config.json") 
 
@@ -31,21 +31,13 @@ MCP_CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "core
 def init_config():
     global OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
     
-    # 尝试加载多个位置的.env文件
-    # 1. 项目根目录
-    root_env_path = Path.cwd() / ".env"
-    # 2. 包内目录
-    package_env_path = Path(__file__).parent.parent / ".env"
-
-    # 优先加载当前工作目录中的.env文件，其次是包内的.env文件
-    if root_env_path.exists():
-        load_dotenv(dotenv_path=root_env_path, override=True)
-        print(f"已加载环境变量从: {root_env_path}")
-    elif package_env_path.exists():
-        load_dotenv(dotenv_path=package_env_path, override=True)
-        print(f"已加载环境变量从: {package_env_path}")
-    else:
-        print("未找到.env文件，使用环境变量默认值")
+    current_dir = Path(__file__).resolve()  # 当前文件的绝对路径
+    # 向上查找包含mini_cursor目录的父目录
+    project_root = current_dir.parent.parent.parent  # 这应该是mini-cursor目录
+    env_file_path = project_root / "mini_cursor" / ".env"
+    load_dotenv(dotenv_path=env_file_path, override=True)
+    print(f"已加载环境变量从: {env_file_path}")
+    
     
     # 从环境变量加载配置
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")

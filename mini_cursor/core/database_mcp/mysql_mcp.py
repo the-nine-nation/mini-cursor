@@ -36,7 +36,7 @@ DB_CONFIG = {
     "pool_minsize": int(os.environ.get("MYSQL_POOL_MINSIZE", "1")),
     "pool_maxsize": int(os.environ.get("MYSQL_POOL_MAXSIZE", "10")),
     "resource_desc_file": os.environ.get("MYSQL_RESOURCE_DESC_FILE", ""),  # 资源描述文件路径（必需）
-    "max_rows": int(os.environ.get("MAX_ROWS", "10"))
+    "max_rows": int(os.environ.get("MAX_ROWS", "20"))
 }
 
 
@@ -102,7 +102,7 @@ tool_specs = [
                 "max_rows": {
                     "type": "integer",
                     "description": "Maximum number of rows to return",
-                    "default": int(os.environ.get("MAX_ROWS", "10"))
+                    "default": DB_CONFIG["max_rows"]
                 }
             },
             "required": ["query"]
@@ -110,16 +110,15 @@ tool_specs = [
     },
     {
         "name": "mysql_get_table_schema",
-        "description": "Get the schema for a specific MySQL table",
+        "description": "Get the schema for a MySQL table. If no table name is provided or '*' is used, it will return a list of all available tables in the database.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "table_name": {
                     "type": "string",
-                    "description": "The name of the table to get schema for"
+                    "description": "The name of the table to get schema for. Leave empty or use '*' to list all tables."
                 }
-            },
-            "required": ["table_name"]
+            }
         }
     }
 ]
@@ -201,11 +200,12 @@ async def tool_mysql_execute_read_query(args: dict) -> str:
     try:
         query = args["query"]
         params = args.get("params", {})
-        max_rows = args.get("max_rows", int(os.environ.get("MAX_ROWS", "10")))
-                    
+        # Get max_rows from args or config, no longer capping here
+        max_rows = args.get("max_rows", DB_CONFIG["max_rows"])
+
         # 执行查询
         return await execute_db_query(query, params, max_rows)
-        
+
     except KeyError as e:
         return f"Error: Missing required parameter: {e.args[0]}"
     except Exception as e:
@@ -215,26 +215,72 @@ async def tool_mysql_get_table_schema(args: dict) -> str:
     if not app_context.pool:
         return "Error: MySQL connection pool not available or not enabled."
     try:
-        table_name = args["table_name"]
+        table_name = args.get("table_name", "")
         schema_info = []
+
+        # 检查表名是否有效
+        if not table_name or table_name.strip() == "*":
+            # 如果没有提供表名或者使用了通配符，返回所有表
+            async with app_context.pool.acquire() as conn:
+                async with conn.cursor() as cursor:
+                    database_name = DB_CONFIG['database']
+                    query = f"SHOW TABLES FROM `{database_name}`"
+                    logger.info(f"No specific table name provided, listing all tables with query: {query}")
+                    await cursor.execute(query)
+                    tables = await cursor.fetchall()
+                    
+                    if not tables:
+                        return f"No tables found in database '{database_name}'"
+                    
+                    schema_info.append(f"Tables in database '{database_name}':")
+                    schema_info.append("------------------------------")
+                    
+                    for table in tables:
+                        schema_info.append(table[0])  # MySQL returns table names in first column
+            
+            return "\n".join(schema_info)
 
         async with app_context.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 # 获取表架构
-                # Use parameterized query for safety
-                query = f"DESCRIBE `{table_name}`"
-                await cursor.execute(query)
-                result = await cursor.fetchall()
+                table_name = table_name.strip().replace('`', '')  # 清理表名
+                try:
+                    query = f"DESCRIBE `{table_name}`"
+                    logger.info(f"Getting schema for table {table_name} with query: {query}")
+                    await cursor.execute(query)
+                    result = await cursor.fetchall()
 
-                if result:
-                    schema_info.append(f"Table: {table_name}")
-                    # Adjust header for DESCRIBE output
-                    schema_info.append("Field | Type | Null | Key | Default | Extra")
-                    schema_info.append("------|------|------|-----|---------|------")
+                    if result:
+                        schema_info.append(f"Table: {table_name}")
+                        # Adjust header for DESCRIBE output
+                        schema_info.append("Field | Type | Null | Key | Default | Extra")
+                        schema_info.append("------|------|------|-----|---------|------")
 
-                    for row in result:
-                        # row is already a tuple/list from fetchall
-                        schema_info.append(" | ".join(str(col) if col is not None else 'NULL' for col in row))
+                        for row in result:
+                            # row is already a tuple/list from fetchall
+                            schema_info.append(" | ".join(str(col) if col is not None else 'NULL' for col in row))
+                except Exception as e:
+                    # 如果特定表查询失败，尝试列出所有表
+                    database_name = DB_CONFIG['database']
+                    
+                    # 记录原始错误
+                    logger.warning(f"Error querying table '{table_name}': {str(e)}")
+                    schema_info.append(f"Error: Could not find table '{table_name}' in database '{database_name}'")
+                    schema_info.append("")
+                    
+                    try:
+                        # 列出数据库中所有表作为建议
+                        query = f"SHOW TABLES FROM `{database_name}`"
+                        await cursor.execute(query)
+                        tables = await cursor.fetchall()
+                        
+                        if tables:
+                            schema_info.append(f"Available tables in database '{database_name}':")
+                            schema_info.append("------------------------------")
+                            for table in tables:
+                                schema_info.append(table[0])
+                    except Exception as list_err:
+                        schema_info.append(f"Error listing available tables: {str(list_err)}")
 
         if schema_info:
             return "\n".join(schema_info)
@@ -263,28 +309,48 @@ async def execute_db_query(query: str, params: tuple | list, max_rows: int) -> s
         if query.count(';') > 1 or (query.count(';') == 1 and not query.strip().endswith(';')):
              return f"Error: Multiple statements are not allowed. Rejected query: {query}"
 
+        # Check if query already has a LIMIT clause (case-insensitive regex)
+        # Simple check for now, can be improved with regex if needed
+        original_query = query.strip()
+        if "limit" not in original_query.lower().split()[-2:]:
+            # Append LIMIT clause only if it's a SELECT query
+            if query_lower.startswith("select"):
+                query = f"{original_query} LIMIT %s"
+                # Add max_rows to params. Need to handle dict vs list/tuple params.
+                if isinstance(params, dict):
+                    # aiomysql with dict params uses %(key)s format.
+                    # Cannot easily mix formats. We'll stick to list/tuple for simplicity when adding LIMIT.
+                    # If original params were dict, this might break. Consider converting dict to list based on query placeholders.
+                    # For now, assume params are list/tuple or empty if we add LIMIT.
+                    if params: 
+                        logger.warning("Mixing dict params with automatic LIMIT might not work as expected.")
+                        # Attempt conversion (naive: assumes order matches simple query)
+                        # This is fragile and might need a more robust solution based on parsing query placeholders
+                        params_list = list(params.values())
+                        params_list.append(max_rows)
+                        params = tuple(params_list)
+                    else:
+                         params = (max_rows,)
+                elif isinstance(params, (list, tuple)):
+                    params = tuple(params) + (max_rows,)
+                else: # Assuming params is empty or None
+                    params = (max_rows,)
+                logger.info(f"Appending LIMIT {max_rows} to query.")
+            else:
+                logger.info(f"Query is not SELECT, skipping automatic LIMIT addition.")
+
         async with app_context.pool.acquire() as conn:
             async with conn.cursor(aiomysql.DictCursor) as cursor:
                 # Execute query
+                logger.info(f"Executing query: {query} with params: {params}")
                 await cursor.execute(query, params)
 
-                # Fetch results
-                rows = await cursor.fetchmany(max_rows)
-                total_row_count = cursor.rowcount # May be -1 depending on query/driver
+                # Fetch results - fetchall now since LIMIT is in query
+                rows = await cursor.fetchall()
+                total_row_count = cursor.rowcount # Might still be useful, or could be len(rows)
 
-                # Try to get total rows if fetchmany was used and rowcount isn't reliable
-                if total_row_count == -1 and len(rows) == max_rows:
-                     try:
-                         # This might be inefficient for large tables
-                         count_query = f"SELECT COUNT(*) FROM ({query}) as subq"
-                         await cursor.execute(count_query, params)
-                         count_result = await cursor.fetchone()
-                         if count_result:
-                             total_row_count = count_result['COUNT(*)']
-                     except Exception as count_err:
-                         logger.warning(f"Could not execute count query for '{query}': {count_err}")
-                         total_row_count = len(rows) # Fallback
-                elif total_row_count == -1:
+                # Simplify total_row_count logic as LIMIT is applied
+                if total_row_count == -1:
                     total_row_count = len(rows)
 
                 # Get column names from cursor description

@@ -1,0 +1,54 @@
+/* 工具消息样式 */
+.message-container.tool {
+    margin: 10px 0;
+    padding: 10px;
+    background-color: #f3f4f6;
+    border-radius: 8px;
+    border-left: 3px solid #4f46e5;
+}
+
+.tool-header {
+    font-weight: bold;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+    color: #4f46e5;
+}
+
+.tool-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.tool-args, .tool-result {
+    background-color: #ffffff;
+    border-radius: 6px;
+    padding: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.tool-section-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #374151;
+    font-size: 0.9em;
+}
+
+.tool-args-value, .tool-result-value {
+    margin: 0;
+    padding: 8px;
+    background-color: #f9fafb;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* 工具结果高亮 */
+.tool-result {
+    border-left: 3px solid #10b981;
+} 

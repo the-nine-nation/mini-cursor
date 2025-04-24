@@ -248,69 +248,78 @@ def init_main():
     import json
     from pathlib import Path
     import importlib.util
+
+    
     config_path = Path(__file__).parent / "mcp_config.json"
-    # 自动检测 cursor_mcp_all.py 的绝对路径
-    def get_cursor_mcp_path():
-        spec = importlib.util.find_spec("mini_cursor.core.cursor_mcp_all")
-        if spec and spec.origin:
-            return spec.origin
-        fallback = Path(__file__).parent / "cursor_mcp_all.py"
-        return str(fallback.resolve())
-    def get_mysql_mcp_path():
-        spec = importlib.util.find_spec("mini_cursor.core.database_mcp.mysql_mcp")
-        if spec and spec.origin:
-            return spec.origin
-        fallback = Path(__file__).parent / "database_mcp/mysql_mcp.py"
-        return str(fallback.resolve())
-    def get_clickhouse_mcp_path():
-        spec = importlib.util.find_spec("mini_cursor.core.database_mcp.clickhouse_mcp")
-        if spec and spec.origin:
-            return spec.origin
-        fallback = Path(__file__).parent / "database_mcp/clickhouse_mcp.py"
-        return str(fallback.resolve())
-    cursor_mcp_py = get_cursor_mcp_path()
-    mysql_mcp_py = get_mysql_mcp_path()
-    clickhouse_mcp_py = get_clickhouse_mcp_path()
-    # 生成配置内容
-    config = {
-        "mcpServers": {
-            "cursor_mcp": {
-                "command": sys.executable,
-                "args": [cursor_mcp_py],
-                "env": {
-                    "BOCHAAI_API_KEY": "bochaai的api,请进入https://open.bochaai.com/获取api,使模型能够进行web搜索"
-                }
-            },
-            "mysql": {
-                "command": sys.executable,
-                "args": [mysql_mcp_py],
-                "env": {
-                    "MYSQL_ENABLED": "true",
-                    "MYSQL_HOST": "mysql数据库的ip",
-                    "MYSQL_PORT": "mysql数据库的端口",
-                    "MYSQL_DATABASE": "mysql数据库的名称",
-                    "MYSQL_USERNAME": "mysql数据库的用户名",
-                    "MYSQL_PASSWORD": "mysql数据库的密码",
-                    "MYSQL_POOL_MINSIZE": "1",
-                    "MYSQL_POOL_MAXSIZE": "10",
-                    "MYSQL_RESOURCE_DESC_FILE": "mysql数据库的资源描述文件路径"
-                }
-            },
-            "clickhouse": {
-                "command": sys.executable,
-                "args": [clickhouse_mcp_py],
-                "env": {
-                    "CLICKHOUSE_ENABLED": "true",
-                    "CLICKHOUSE_HOST": "clickhouse数据库的ip",
-                    "CLICKHOUSE_PORT": "clickhouse数据库的端口",
-                    "CLICKHOUSE_DATABASE": "clickhouse数据库的名称",
-                    "CLICKHOUSE_USERNAME": "clickhouse数据库的用户名",
-                    "CLICKHOUSE_PASSWORD": "clickhouse数据库的密码",
-                    "CLICKHOUSE_RESOURCE_DESC_FILE": "clickhouse数据库的资源描述文件路径"
+    if config_path.exists():
+        print(f"{Colors.YELLOW}警告: 配置文件 {config_path} 已存在，将不会创建新文件{Colors.ENDC}")
+    else:
+        def get_cursor_mcp_path():
+            # 自动检测 cursor_mcp_all.py 的绝对路径
+            cursor_mcp_path=Path(__file__).parent / "cursor_mcp_all.py"
+            return str(cursor_mcp_path.resolve())
+        
+        # 查找MySQL MCP模块的绝对路径
+        # 优先通过Python导入系统查找，找不到则使用相对路径
+        def get_mysql_mcp_path():
+            mysql_mcp_path = Path(__file__).parent / "database_mcp/mysql_mcp.py"
+            return str(mysql_mcp_path.resolve())
+        
+        # 查找ClickHouse MCP模块的绝对路径
+        # 优先通过Python导入系统查找，找不到则使用相对路径
+        def get_clickhouse_mcp_path():
+            clickhouse_mcp_path = Path(__file__).parent / "database_mcp/clickhouse_mcp.py"
+            return str(clickhouse_mcp_path.resolve())
+        
+        # 获取各个MCP模块的路径
+        cursor_mcp_py = get_cursor_mcp_path()
+        mysql_mcp_py = get_mysql_mcp_path()
+        clickhouse_mcp_py = get_clickhouse_mcp_path()
+        # 生成配置内容
+        config = {
+            "mcpServers": {
+                "cursor_mcp": {
+                    "command": sys.executable,
+                    "args": [cursor_mcp_py],
+                    "env": {
+                        "BOCHAAI_API_KEY": "bochaai的api,请进入https://open.bochaai.com/获取api,使模型能够进行web搜索"
                     }
+                },
+                "mysql": {
+                    "command": sys.executable,
+                    "args": [mysql_mcp_py],
+                    "env": {
+                        "MYSQL_ENABLED": "true",
+                        "MYSQL_HOST": "mysql数据库的ip",
+                        "MYSQL_PORT": "mysql数据库的端口",
+                        "MYSQL_DATABASE": "mysql数据库的名称",
+                        "MYSQL_USERNAME": "mysql数据库的用户名",
+                        "MYSQL_PASSWORD": "mysql数据库的密码",
+                        "MYSQL_POOL_MINSIZE": "1",
+                        "MYSQL_POOL_MAXSIZE": "10",
+                        "MYSQL_RESOURCE_DESC_FILE": "mysql数据库的资源描述文件路径"
+                    }
+                },
+                "clickhouse": {
+                    "command": sys.executable,
+                    "args": [clickhouse_mcp_py],
+                    "env": {
+                        "CLICKHOUSE_ENABLED": "true",
+                        "CLICKHOUSE_HOST": "clickhouse数据库的ip",
+                        "CLICKHOUSE_PORT": "clickhouse数据库的端口",
+                        "CLICKHOUSE_DATABASE": "clickhouse数据库的名称",
+                        "CLICKHOUSE_USERNAME": "clickhouse数据库的用户名",
+                        "CLICKHOUSE_PASSWORD": "clickhouse数据库的密码",
+                        "CLICKHOUSE_RESOURCE_DESC_FILE": "clickhouse数据库的资源描述文件路径"
+                        }
+                }
             }
         }
-    }
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=4, ensure_ascii=False)
-    print(f"{Colors.GREEN}已生成初始化 mcp_config.json 于 {config_path}{Colors.ENDC}") 
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=4, ensure_ascii=False)
+        print(f"{Colors.GREEN}已生成初始化 mcp_config.json 于 {config_path}{Colors.ENDC}") 
+        
+if __name__ == "__main__":
+    from pathlib import Path
+    cursor_mcp_path=Path(__file__).parent / "database_mcp/mysql_mcp.py"
+    print(cursor_mcp_path)

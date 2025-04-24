@@ -1,9 +1,11 @@
-import json
 import os
+import json
+import asyncio
 import traceback
 import logging
 from typing import Dict
 from contextlib import AsyncExitStack
+import time
 
 from mcp.client.session import ClientSession
 from mcp.client.stdio import stdio_client, StdioServerParameters
@@ -17,6 +19,11 @@ class ServerManager:
     def __init__(self):
         self.exit_stack = AsyncExitStack()
         self.sessions = {}  # 存储多个MCP server会话
+        self.main_loop = None  # 存储主事件循环的引用
+    
+    def set_main_loop(self, loop):
+        """设置主事件循环的引用，用于在线程中执行工具调用"""
+        self.main_loop = loop
         
     def load_mcp_config(self) -> Dict[str, Dict]:
         """从配置文件加载MCP服务器配置"""
@@ -38,15 +45,7 @@ class ServerManager:
             server_configs = self.load_mcp_config()
             
             if not server_configs:
-                print(f"{Colors.YELLOW}No MCP servers configured. Falling back to default terminal server.{Colors.ENDC}")
-                # 回退到默认配置
-                server_configs = {
-                    "terminal": {
-                        "command": "/Volumes/AppData/opt/anaconda3/envs/mcp_env/bin/python",
-                        "args": ["/Volumes/AppData/guanan/lzy/mcp_lzy/core/mcp_data_all/terminal_server.py"],
-                        "env": None
-                    }
-                }
+                raise RuntimeError("No MCP servers configured in mcp_config.json")
             
             connected_servers = []
             
@@ -124,4 +123,90 @@ class ServerManager:
             try:
                 await self.exit_stack.aclose()
             except:
-                pass 
+                pass
+                
+    async def execute_tool(self, server_name, tool_name, tool_args):
+        """执行特定服务器上的工具调用"""
+        try:
+            # 简化为直接执行工具调用实现
+            if server_name not in self.sessions:
+                raise Exception(f"Server {server_name} not connected")
+            
+            session = self.sessions[server_name]
+            
+            # 记录开始执行的时间（用于日志）
+            start_time = time.time()
+            
+            # 执行工具调用
+            try:
+                # 直接使用当前会话执行工具调用
+                print(f"{Colors.GREEN}Executing tool {tool_name} on server {server_name}...{Colors.ENDC}")
+                response = await session.call_tool(tool_name, tool_args)
+                elapsed = time.time() - start_time
+                print(f"Tool {tool_name} executed in {elapsed:.2f}s")
+            except Exception as e:
+                # 捕获并改进工具调用过程中的错误
+                error_msg = f"Server {server_name} failed to execute tool {tool_name}: {str(e)}"
+                print(f"{Colors.RED}{error_msg}{Colors.ENDC}")
+                
+                if VERBOSE_LOGGING:
+                    traceback.print_exc()
+                
+                return error_msg
+            
+            # 处理响应
+            # 首先尝试常见的属性
+            if hasattr(response, 'result'):
+                return response.result
+            elif hasattr(response, 'output'):
+                return response.output
+            
+            # 使用pydantic的model_dump方法（最常见的情况）
+            if hasattr(response, 'model_dump'):
+                try:
+                    result_dict = response.model_dump()
+                    
+                    # 从字典中提取结果字段
+                    if 'result' in result_dict:
+                        return result_dict['result']
+                    elif 'output' in result_dict:
+                        return result_dict['output']
+                    
+                    # 如果没有特定字段，尝试获取第一个内容字段
+                    for key, value in result_dict.items():
+                        if key in ['content', 'text', 'data', 'message', 'response']:
+                            return value
+                    
+                    # 如果没有特定字段，返回整个字典的简化版本
+                    return json.dumps(result_dict, ensure_ascii=False)
+                except Exception as e:
+                    if VERBOSE_LOGGING:
+                        print(f"{Colors.YELLOW}Error during result conversion: {str(e)}{Colors.ENDC}")
+                    pass  # 静默失败，继续尝试其他方法
+            
+            # 如果是列表，可能包含TextContent对象（MCP标准格式）
+            if isinstance(response, list) and len(response) > 0:
+                # 尝试提取第一个元素的文本
+                first_item = response[0]
+                if hasattr(first_item, 'text'):
+                    return first_item.text
+                elif hasattr(first_item, 'content'):
+                    return first_item.content
+                
+                # 如果是字典类型的列表元素，尝试提取内容
+                if isinstance(first_item, dict):
+                    for key in ['text', 'content', 'data', 'message']:
+                        if key in first_item:
+                            return first_item[key]
+            
+            # 最后尝试直接转换为字符串
+            return str(response)
+                
+        except Exception as e:
+            error_msg = f"Error executing tool {tool_name} on server {server_name}: {str(e)}"
+            print(f"{Colors.RED}{error_msg}{Colors.ENDC}")
+            
+            if VERBOSE_LOGGING:
+                traceback.print_exc()
+            
+            return error_msg 

@@ -10,6 +10,8 @@ This project supports fully local/intranet deployment with no possibility of dat
 
 ## Update
 
+**20250422**: Added web interface that can be launched directly from the CLI with `mini-cursor web`.
+
 **20250421**: Added support for inference models like deepseek-r1.
 
 **20250418**: You can use this project to collect high-quality tool call data, or use the MCP services prepared by this project that are essentially identical to Cursor's (except for a code retrieval MCP, which I found to be not very effective in personal use). Additionally, this project adds web search and secure connections to SQL and ClickHouse databases. After testing, it was found that many models may have dangerous operations, so all database-related operations are restricted to read-only.
@@ -127,6 +129,20 @@ mini-cursor chat
 - Supports natural language Q&A, code generation, tool invocation, etc.
 - Type `help` at any time during chat for available commands.
 
+### 5. Launch Web Interface
+
+```bash
+mini-cursor web
+```
+This command starts the web server and automatically opens your default browser to access the web interface. The web interface provides a more visual and user-friendly way to interact with mini-cursor:
+
+- Full chat capabilities with streaming responses
+- Visual tool call display
+- Configuration management
+- Conversation history viewing
+
+You can press Ctrl+C in the terminal to stop the web server when you're done.
+
 ---
 
 ## Common Commands
@@ -137,6 +153,7 @@ mini-cursor chat
 | `mini-cursor config`     | Interactive API param config (.env) |
 | `mini-cursor mcp-config` | Interactive MCP config editor       |
 | `mini-cursor chat`       | Start chat agent                   |
+| `mini-cursor web`        | Launch the web interface           |
 | `mini-cursor help`       | Show help                          |
 
 **In chat mode, you can use:**
@@ -294,3 +311,58 @@ For custom prompts, tools, MCP services, see code comments and `mini_cursor/prom
 ## License
 
 MIT
+
+## Fast API Backend
+
+Mini-Cursor now includes a FastAPI backend with SSE streaming support. This provides a web API for chat functionality.
+
+### Installation
+
+Install the required dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Running the API Server
+
+To start the FastAPI server:
+
+```bash
+python -m mini_cursor.main_api
+```
+
+By default, the server will run on `http://0.0.0.0:8000`. You can customize the host and port by setting the `HOST` and `PORT` environment variables.
+
+### API Endpoints
+
+#### GET /
+
+Returns basic information about the API.
+
+#### POST /chat
+
+Endpoint for chat functionality with SSE streaming. Accepts a JSON payload with:
+
+- `query` (required): The message to send to the AI
+- `system_prompt` (optional): Custom system prompt
+- `workspace` (optional): Workspace path
+
+Example request:
+
+```bash
+curl -X POST "http://localhost:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What can you do?"}'
+```
+
+This endpoint returns Server-Sent Events (SSE) with the following event types:
+
+- `start`: Indicates the start of processing
+- `message`: AI assistant's text responses
+- `thinking`: Reasoning process from models that support it
+- `tool_call`: Information about tool calls being made
+- `tool_result`: Results of tool calls
+- `tool_error`: Errors that occur during tool calls
+- `done`: Indicates the completion of processing
+- `error`: Any errors that occur during processing

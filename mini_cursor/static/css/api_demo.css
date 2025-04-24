@@ -1,0 +1,837 @@
+/* Base Styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+    color: #333;
+}
+/* Shortcut Hint */
+.shortcut-hint {
+    font-size: 12px;
+    color: #666;
+    text-align: right;
+    margin-top: 4px;
+    padding-right: 10px;
+}
+
+.shortcut-hint kbd {
+    display: inline-block;
+    padding: 2px 4px;
+    font-size: 11px;
+    line-height: 1;
+    color: #444;
+    background-color: #f7f7f7;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+    margin: 0 2px;
+}
+
+/* Tools Panel Styles */
+.tool-item {
+    margin: 6px 0;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background-color: #fff;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.tool-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 6px 6px 0 0;
+}
+
+.tool-header:hover {
+    background-color: #f0f4f8;
+}
+
+.tool-checkbox {
+    margin-right: 8px;
+}
+
+.tool-name {
+    flex: 1;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.tool-toggle {
+    display: flex;
+    align-items: center;
+    transition: transform 0.2s ease;
+}
+
+.expand-icon {
+    fill: #4a6782;
+    transition: transform 0.2s ease;
+}
+
+.tool-details {
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    background-color: #f5f7fa;
+    transition: all 0.3s ease;
+    border-top: 0 solid #e1e4e8;
+    width: 100%;
+    box-sizing: border-box;
+    display: block;
+    border-radius: 0 0 4px 4px;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.tool-item.expanded .tool-details {
+    padding: 12px 15px;
+    max-height: 500px;
+    border-top: 1px solid #e1e4e8;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.tool-description {
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #34495e;
+    line-height: 1.5;
+    padding: 0 2px;
+    white-space: normal;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.tool-parameters h4 {
+    margin: 12px 0 10px 0;
+    font-size: 14px;
+    color: #2c3e50;
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 6px;
+}
+
+.tool-parameters ul {
+    margin: 0;
+    padding: 0;
+    font-size: 12px;
+    list-style-type: none;
+    width: 100%;
+}
+
+.tool-parameters li {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px dotted #dde2e6;
+    background-color: rgba(255,255,255,0.7);
+    padding: 8px 10px;
+    border-radius: 6px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.tool-parameters li:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.param-name {
+    font-weight: 600;
+    color: #1a73e8;
+    display: inline-block;
+    max-width: 100%;
+    word-break: break-word;
+}
+
+.param-header {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 5px;
+    width: 100%;
+}
+
+.param-type {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 5px;
+    font-size: 10px;
+    color: #24292e;
+    background-color: #e8eaee;
+    border-radius: 4px;
+    vertical-align: middle;
+    font-weight: 500;
+}
+
+.param-required {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 5px;
+    font-size: 10px;
+    color: #fff;
+    background-color: #e74c3c;
+    border-radius: 4px;
+    vertical-align: middle;
+    font-weight: 500;
+}
+
+.param-description {
+    margin-top: 4px;
+    color: #34495e;
+    line-height: 1.5;
+    font-size: 12px;
+    white-space: normal;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Resizer Styles */
+.resizer {
+    width: 8px;
+    background-color: #e0e0e0;
+    cursor: col-resize;
+    position: relative;
+}
+
+.resizer:hover, .resizer.dragging {
+    background-color: #ccc;
+}
+
+.resizer::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    height: 40px;
+    width: 4px;
+    background-color: #aaa;
+    border-radius: 2px;
+}
+
+/* Make sure layout is set to flex to enable resizing */
+.layout {
+    display: flex;
+    height: calc(100vh - 60px);
+}
+
+.tools-panel {
+    min-width: 200px;
+    max-width: 40%;
+    transition: width 0.05s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.tools-list {
+    overflow-y: auto;
+    flex-grow: 1;
+    padding: 0 10px;
+}
+
+.server-name {
+    font-weight: bold;
+    margin: 10px 0 5px 0;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #ddd;
+    color: #2c3e50;
+}
+
+/* Make sure long tool names wrap properly */
+.tool-name {
+    flex: 1;
+    font-weight: 500;
+    color: #2c3e50;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    padding-right: 5px;
+}
+
+/* Fix tool details layout */
+.tool-toggle {
+    display: flex;
+    align-items: center;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+/* Ensure parameter badges stay on the same line when possible */
+.param-required, .param-type {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 5px;
+    font-size: 10px;
+    vertical-align: middle;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.tool-parameters h4 {
+    margin: 12px 0 10px 0;
+    font-size: 14px;
+    color: #2c3e50;
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 6px;
+    word-break: break-word;
+}
+
+/* Set proper width for nested elements */
+.tool-item {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.tool-parameters {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 聊天面板样式 */
+.chat-panel {
+    flex: 1;
+    overflow: hidden;
+    min-width: 300px; /* Ensure chat panel has minimum usable width */
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 15px;
+    background-color: #f1f1f1;
+    border-bottom: 1px solid #ddd;
+    position: relative;
+    height: 50px; /* 固定高度 */
+}
+
+.chat-title {
+    font-weight: 500;
+    color: #333;
+    line-height: 50px; /* 确保文本垂直居中，调整为与header高度一致 */
+    font-size: 16px; /* 增加字体大小 */
+}
+
+/* Tool updating state */
+.tool-item.updating {
+    opacity: 0.7;
+    position: relative;
+}
+
+.tool-item.updating::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.3);
+    z-index: 1;
+    border-radius: 6px;
+}
+
+.tool-item.updating::after {
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    top: 50%;
+    left: 50%;
+    margin-top: -10px;
+    margin-left: -10px;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    z-index: 2;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Disabled checkbox styling */
+.tool-checkbox:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+/* Tool result content styling */
+.nested-bubble-content pre {
+    margin: 0;
+    padding: 8px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+    background-color: rgba(0, 0, 0, 0.03);
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.nested-bubble.tool-result .nested-bubble-content pre {
+    background-color: rgba(240, 249, 255, 0.7);
+}
+
+.nested-bubble.tool-error .nested-bubble-content pre {
+    background-color: rgba(255, 235, 235, 0.7);
+}
+
+/* Tool bubble header styling */
+.nested-bubble-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    cursor: pointer;
+    background-color: #f5f7fa;
+    border-radius: 4px;
+    border: 1px solid #e1e4e8;
+}
+
+/* Make sure the view details button is always visible and clickable */
+.tool-details-btn {
+    margin-left: auto;
+    padding: 2px 8px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background-color: #f8f8f8;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.tool-details-btn:hover {
+    background-color: #e6e6e6;
+}
+
+/* Plain text message styling */
+.message pre.message-text {
+    background: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 0;
+    border: none;
+    color: inherit;
+}
+
+/* Code block styling within text */
+.message pre.message-text code {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 90%;
+}
+
+/* Tool call sequence styling */
+.message-container.assistant + .message-container.assistant {
+    margin-top: 12px;
+}
+
+/* Add a visual indicator for continuous AI messages */
+.message-container.assistant + .message-container.assistant::before {
+    content: "";
+    display: block;
+    height: 8px;
+    width: 8px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    margin: -6px auto 8px auto;
+}
+
+/* Style for tool-containing messages */
+.message.with-tools {
+    background-color: #f8f9fa;
+    border-left: 3px solid #dfdfdf;
+    padding-left: 10px !important;
+}
+
+/* List Styles */
+.message-text ul, .message-text ol {
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+}
+
+.message-text li {
+    margin-bottom: 0.25em;
+}
+
+.message-text ol {
+    counter-reset: item;
+    list-style-type: decimal;
+}
+
+.message-text ol[start] {
+    counter-reset: none;
+}
+
+.message-text ul {
+    list-style-type: disc;
+}
+
+/* Config Panel Styles */
+.config-panel {
+    width: 250px;
+    background-color: #f9f9f9;
+    border-left: 1px solid #ddd;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.config-header {
+    padding: 15px;
+    font-weight: bold;
+    background-color: #f1f1f1;
+    border-bottom: 1px solid #ddd;
+    color: #333;
+}
+
+.config-section {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.config-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 16px;
+    color: #2c3e50;
+}
+
+.config-item {
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.config-item label {
+    font-weight: 500;
+    display: block;
+    margin-bottom: 4px;
+    color: #555;
+}
+
+.config-item span {
+    display: block;
+    padding: 5px 8px;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 12px;
+    overflow-wrap: break-word;
+    color: #000;
+}
+
+.btn {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f5f5f5;
+    cursor: pointer;
+    font-size: 14px;
+    text-align: center;
+    transition: all 0.2s ease;
+    color: #000;
+}
+
+.btn:hover {
+    background-color: #e9e9e9;
+}
+
+.btn.primary {
+    background-color: #4a90e2;
+    border-color: #357bd8;
+    color: white;
+}
+
+.btn.primary:hover {
+    background-color: #357bd8;
+}
+
+.btn.danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.btn.danger:hover {
+    background-color: #f1c1c7;
+}
+
+.btn.warning {
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+    color: #856404;
+}
+
+.btn.warning:hover {
+    background-color: #ffecb5;
+}
+
+/* 历史对话管理按钮样式 */
+.header-buttons {
+    position: absolute;
+    right: 15px;
+    top: 0;
+    height: 100%;
+    width: 300px; /* 给按钮留出足够空间 */
+}
+
+/* 共享的按钮样式 */
+.history-manager-btn, .system-prompt-btn {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px; /* 增加字体大小 */
+    cursor: pointer;
+    padding: 8px 12px; /* 增加垂直padding */
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    white-space: nowrap; /* 确保文本不换行 */
+    overflow: hidden;    /* 防止文本溢出 */
+    text-overflow: ellipsis; /* 溢出时显示省略号 */
+    position: absolute; /* 使用绝对定位 */
+    height: 34px; /* 进一步增加按钮高度 */
+    line-height: 18px; /* 调整文本行高 */
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 单独定位系统提示按钮 */
+.system-prompt-btn {
+    right: 150px; /* 将按钮向左移动，进一步增加间距 */
+    width: 110px; /* 固定宽度 */
+}
+
+/* 单独定位历史管理按钮 */
+.history-manager-btn {
+    right: 0;
+    width: 110px; /* 固定宽度 */
+}
+
+.history-manager-btn:hover, .system-prompt-btn:hover {
+    background-color: #357bd8;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* 系统提示编辑弹窗样式 */
+.system-prompt-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 999;
+}
+
+.system-prompt-dialog {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    max-width: 800px;
+    height: 80%;
+    max-height: 700px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    overflow: hidden;
+    flex-direction: column;
+    display: none;
+}
+
+.system-prompt-dialog-header {
+    padding: 15px;
+    background-color: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.system-prompt-dialog-title {
+    font-weight: bold;
+    font-size: 16px;
+    color: #333;
+}
+
+.system-prompt-dialog-close {
+    border: none;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #666;
+}
+
+.system-prompt-dialog-content {
+    padding: 15px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 50px);
+}
+
+.system-prompt-textarea {
+    width: 100%;
+    height: calc(100% - 60px);
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 14px;
+    resize: none;
+    margin-bottom: 15px;
+}
+
+.system-prompt-dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* 历史对话管理弹窗样式 */
+.history-dialog {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    max-width: 800px;
+    max-height: 80vh;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    overflow: hidden;
+    flex-direction: column;
+}
+
+.history-dialog-header {
+    padding: 15px;
+    background-color: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.history-dialog-title {
+    font-weight: bold;
+    font-size: 16px;
+    color: #333;
+}
+
+.history-dialog-close {
+    border: none;
+    background: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #666;
+}
+
+.history-dialog-content {
+    padding: 15px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.history-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.history-item {
+    display: flex;         /* 使用flex布局 */
+    align-items: center;    /* 垂直居中对齐 */
+    justify-content: space-between; /* 内容和删除按钮分开 */
+    position: relative;    /* 为了按钮的绝对定位 */
+}
+
+.history-item:hover {
+    background-color: #f9f9f9;
+}
+
+.history-item-content {
+    flex-grow: 1;          /* 让内容区域占据大部分空间 */
+    padding-right: 30px;   /* 为删除按钮留出空间 */
+    cursor: pointer;       /* 只有内容区域可点击加载 */
+}
+
+.history-item-title {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.history-item-info {
+    display: flex;
+    font-size: 12px;
+    color: #666;
+}
+
+.history-item-date {
+    margin-right: 15px;
+}
+
+.history-item-delete {
+    position: absolute;    /* 绝对定位 */
+    top: 50%;              /* 垂直居中 */
+    right: 10px;           /* 靠右对齐 */
+    transform: translateY(-50%); /* 精确垂直居中 */
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #aaa;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.history-item-delete:hover {
+    color: #e74c3c; /* 鼠标悬停时变红 */
+}
+
+.history-dialog-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 999;
+} 

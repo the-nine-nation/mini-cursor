@@ -12,7 +12,9 @@ cursor一个月20美金,对于很多人而言,这是一个星期的饭食.cursor
 
 ## 更新
 
-**20250421**:增加了对推理模型如deepseek-r1的支持.
+**20250422**: 新增Web界面，可直接通过命令行使用 `mini-cursor web` 启动。
+
+**20250421**: 增加了对推理模型如deepseek-r1的支持。
 
 **20250418**: 额外添加了web搜索以及安全连接sql和clickhouse数据库,经过测试,发现诸多模型皆有危险操作可能,因此与数据库相关操作均限制为只读.
 
@@ -130,6 +132,20 @@ mini-cursor chat
 - 支持自然语言提问、代码生成、工具调用等。
 - 聊天过程中可随时输入 `help` 查看命令。
 
+### 5. 启动Web界面
+
+```bash
+mini-cursor web
+```
+该命令会启动Web服务器并自动在浏览器中打开Web界面。Web界面提供了更加可视化和用户友好的方式与mini-cursor交互：
+
+- 完整的聊天功能和流式响应
+- 可视化工具调用展示
+- 配置管理
+- 对话历史查看
+
+使用完毕后，可以在终端按下Ctrl+C停止Web服务器。
+
 ---
 
 ## 常用命令一览
@@ -140,6 +156,7 @@ mini-cursor chat
 | `mini-cursor config`     | 交互式修改 API 参数（写入.env）|
 | `mini-cursor mcp-config` | 交互式生成/编辑 MCP 配置      |
 | `mini-cursor chat`       | 启动智能体聊天                |
+| `mini-cursor web`        | 启动Web界面                  |
 | `mini-cursor help`       | 查看帮助              |
 
 **聊天模式下支持的命令：**
@@ -297,4 +314,59 @@ eval (mini-cursor completion fish)
 ## License
 
 MIT 
+
+## FastAPI 后端
+
+Mini-Cursor 现在包含一个带有 SSE 流式传输支持的 FastAPI 后端。这提供了一个用于聊天功能的 Web API。
+
+### 安装
+
+安装所需的依赖项：
+
+```bash
+pip install -r requirements.txt
+```
+
+### 运行 API 服务器
+
+启动 FastAPI 服务器：
+
+```bash
+python -m mini_cursor.main_api
+```
+
+默认情况下，服务器将在 `http://0.0.0.0:8000` 上运行。你可以通过设置 `HOST` 和 `PORT` 环境变量来自定义主机和端口。
+
+### API 端点
+
+#### GET /
+
+返回有关 API 的基本信息。
+
+#### POST /chat
+
+用于聊天功能的端点，支持 SSE 流式传输。接受包含以下内容的 JSON 负载：
+
+- `query`（必需）：发送给 AI 的消息
+- `system_prompt`（可选）：自定义系统提示
+- `workspace`（可选）：工作空间路径
+
+请求示例：
+
+```bash
+curl -X POST "http://localhost:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "你能做什么？"}'
+```
+
+此端点返回具有以下事件类型的服务器发送事件（SSE）：
+
+- `start`：表示开始处理
+- `message`：AI 助手的文本响应
+- `thinking`：支持思考过程的模型的推理过程
+- `tool_call`：正在进行的工具调用信息
+- `tool_result`：工具调用的结果
+- `tool_error`：工具调用期间发生的错误
+- `done`：表示处理完成
+- `error`：处理期间发生的任何错误
 

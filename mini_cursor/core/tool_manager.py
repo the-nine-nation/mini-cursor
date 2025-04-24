@@ -14,6 +14,7 @@ class ToolManager:
         self.cached_all_tools = None  # 缓存所有服务器的工具
         self.disabled_tools = set()  # 禁用的工具名称集合
         self.tool_enablement_mode = "all"  # 默认模式: "all"启用所有, "selective"选择性启用
+        self.tool_server_cache = {}  # 工具与服务器映射的缓存
 
     def set_server_tools(self, server_name, tools):
         """设置特定服务器的工具"""
@@ -28,10 +29,19 @@ class ToolManager:
         return self.sessions
     
     def find_tool_server(self, tool_name: str) -> Tuple[Optional[str], Optional[Any]]:
-        """查找提供特定工具的服务器"""
+        """查找提供特定工具的服务器，使用缓存提高性能"""
+        # 首先检查缓存
+        if tool_name in self.tool_server_cache:
+            server_name = self.tool_server_cache[tool_name]
+            return server_name, self.server_tools[server_name].get(tool_name)
+        
+        # 如果缓存中没有，搜索所有服务器
         for server_name, tools in self.server_tools.items():
             if tool_name in tools:
+                # 找到后添加到缓存
+                self.tool_server_cache[tool_name] = server_name
                 return server_name, tools[tool_name]
+        
         return None, None
     
     def get_all_tools(self) -> List[Dict]:
@@ -262,31 +272,20 @@ class ToolManager:
             self.tool_history.append(call_record)
     
     def parse_tool_arguments(self, arguments_str: str) -> Dict:
-        """解析工具调用参数，并处理可能的错误"""
+        """解析工具调用参数，简化处理流程提高性能"""
         try:
-            # 检查和修复不完整或格式不正确的JSON
-            arguments = arguments_str.strip()
-            # 检查是否是空JSON或格式不正确
-            if not arguments or arguments == "null" or arguments == "undefined":
-                arguments = "{}"
-            # 确保它是有效的JSON对象
-            if not (arguments.startswith('{') and arguments.endswith('}')):
-                arguments = "{}"
-            return json.loads(arguments)
-        except json.JSONDecodeError as e:
-            print(f"Error parsing tool arguments: {arguments_str}")
-            print(f"JSON parsing error: {e}")
-            # 尝试修复常见的JSON错误
+            # 尝试直接解析
+            return json.loads(arguments_str)
+        except json.JSONDecodeError:
+            # 如果解析失败，使用简单的修复方法
             try:
-                # 有时模型会生成不完整的JSON，尝试将其包装为有效的JSON对象
-                if not arguments_str.strip().startswith('{'):
-                    fixed_args = "{" + arguments_str.strip() + "}"
-                    tool_args = json.loads(fixed_args)
-                    print("Successfully fixed JSON format.")
-                    return tool_args
-                else:
-                    # 如果无法修复，使用空对象
+                # 确保字符串是JSON对象格式
+                arguments = arguments_str.strip()
+                if not arguments or arguments == "null" or arguments == "undefined":
                     return {}
+                if not (arguments.startswith('{') and arguments.endswith('}')):
+                    arguments = "{" + arguments + "}"
+                return json.loads(arguments)
             except:
-                # 如果所有尝试都失败，使用空对象
+                # 如果所有尝试都失败，返回空对象
                 return {} 
