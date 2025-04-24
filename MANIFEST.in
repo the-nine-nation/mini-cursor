@@ -4,3 +4,4 @@ include mini_cursor/core/mcp_config.json
 include mini_cursor/templates/*.html
 include mini_cursor/static/* 
 include mini_cursor/data/system_prompt_default.txt
+include mini_cursor/data/system_prompt.txt

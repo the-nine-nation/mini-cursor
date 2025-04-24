@@ -4,7 +4,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
-*.txt
+mini_cursor/core/database_mcp/clickhouse_resource.txt
+mini_cursor/core/database_mcp/mysql_resource.txt
 # C extensions
 *.so
 test_dev.py
