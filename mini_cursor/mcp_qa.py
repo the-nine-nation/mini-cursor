@@ -10,8 +10,9 @@ import platform
 from mini_cursor.core.config import Colors, OPENAI_BASE_URL, OPENAI_MODEL, TOOL_CALL_TIMEOUT, VERBOSE_LOGGING, MCP_CONFIG_FILE
 from mini_cursor.core.mcp_client import MCPClient
 from mini_cursor.core.cli import CLIHandler, setup_readline, config_main, mcp_config_generate_main
-from mini_cursor.prompt import system_prompt
 
+prompt_path=os.path.join(os.path.dirname(__file__), 'data', 'system_prompt.txt')
+system_prompt=open(prompt_path, 'r', encoding='utf-8').read()
 # 获取操作系统版本
 os_version = platform.platform()
 
