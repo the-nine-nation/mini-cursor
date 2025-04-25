@@ -49,7 +49,6 @@ async def update_openai_config(request: OpenAIConfigRequest, client: MCPClient =
 
         for key, value in env_content.items():
             set_key(env_file_path, key, value)
-        client.init_openai_client()
     
         return {
             "status": "ok",

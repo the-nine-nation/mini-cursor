@@ -137,14 +137,14 @@ class DatabaseManager:
         
         # 更新对话内容
         self.cursor.execute(
-            "UPDATE conversations SET content = ?, updated_at = ?, turns = ? WHERE id = ?",
-            (json.dumps(content), now, turns, conversation_id)
+            "UPDATE conversations SET content = ?, updated_at = ? WHERE id = ?",
+            (json.dumps(content), now, conversation_id)
         )
         self.conn.commit()
         
         return True
     
-    def add_tool_call_to_conversation(self, conversation_id: str, tool_name: str, tool_args: str, tool_result: str) -> bool:
+    def add_tool_call_to_conversation(self, conversation_id: str, tool_name: str, tool_args: str, tool_result: str, is_error: bool = False) -> bool:
         """
         向对话中添加工具调用记录
         
@@ -153,6 +153,7 @@ class DatabaseManager:
             tool_name: 工具名称
             tool_args: 工具参数
             tool_result: 工具调用结果
+            is_error: 是否为错误结果
             
         Returns:
             bool: 是否成功添加
@@ -177,6 +178,7 @@ class DatabaseManager:
             "tool_name": tool_name,
             "tool_args": tool_args,
             "tool_result": tool_result,
+            "is_error": is_error,
             "timestamp": now.isoformat()
         })
         

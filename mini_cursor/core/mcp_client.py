@@ -4,7 +4,7 @@ import os
 import asyncio
 import traceback
 
-from mini_cursor.core.config import Colors, OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL, VERBOSE_LOGGING, TOOL_CALL_TIMEOUT
+from mini_cursor.core.config import Colors,init_config, VERBOSE_LOGGING, TOOL_CALL_TIMEOUT
 from mini_cursor.core.tool_manager import ToolManager
 from mini_cursor.core.message_manager import MessageManager
 from mini_cursor.core.server_manager import ServerManager
@@ -21,36 +21,62 @@ class MCPClient:
         self.tool_history_manager = ToolHistoryManager()  # 添加工具历史管理器
         self.update_listener = None  # 添加更新监听器字段
         self.tool_history = []  # 初始化工具调用历史
-        self.init_openai_client()
         
         # 初始化数据库管理器
         self.db_manager = get_db_manager()
         self.current_conversation_id = None
-    
-    def init_openai_client(self):
-        """初始化OpenAI客户端，使用当前配置的API密钥和基础URL"""
+        self.OPENAI_MODEL=""
+        conf=init_config()
+        OPENAI_API_KEY=conf["OPENAI_API_KEY"]
+        OPENAI_BASE_URL=conf["OPENAI_BASE_URL"]
         self.client = AsyncOpenAI(
             base_url=OPENAI_BASE_URL,
             api_key=OPENAI_API_KEY,
         )
-    
-    def update_config(self):
-        """更新客户端配置，从环境变量重新加载设置并重新初始化客户端"""
-        from mini_cursor.core.config import init_config, OPENAI_MODEL, OPENAI_BASE_URL
-        config = init_config()
-        print(f"\n{Colors.GREEN}重新加载配置成功{Colors.ENDC}")
-        print(f"{Colors.CYAN}OpenAI API Base URL: {config['OPENAI_BASE_URL']}{Colors.ENDC}")
-        print(f"{Colors.CYAN}Using model: {config['OPENAI_MODEL']}{Colors.ENDC}")
         
-        # 重新初始化OpenAI客户端
-        self.init_openai_client()
+        
+        
+        
+    
+    async def _create_chat_completion(self, messages, tools=None, stream=True, temperature=0.3):
+        """封装OpenAI聊天完成API调用的通用方法
+        
+        Args:
+            messages: 对话消息列表
+            tools: 可用工具列表，默认为None
+            stream: 是否使用流式响应，默认为True
+            temperature: 温度参数，控制随机性，默认为0.3
+            
+        Returns:
+            OpenAI API的响应对象
+        """
+        conf=init_config()
+        self.OPENAI_MODEL=conf["OPENAI_MODEL"]
+        # 构建基本参数
+        params = {
+            "model": self.OPENAI_MODEL,
+            "messages": messages,
+            "temperature": temperature,
+        }
+        
+        # 如果提供了工具，添加到参数中
+        if tools:
+            params["tools"] = tools
+            
+        # 设置是否使用流式响应
+        params["stream"] = stream
+        
+        # 调用API并返回结果
+        return await self.client.chat.completions.create(**params)
+        
     
     async def connect_to_servers(self):
         """连接到配置的所有MCP服务器"""
         await self.server_manager.connect_to_servers(self.tool_manager)
+        
+    
     
     async def process_query(self, query: str, system_prompt: str, stream=True) -> str:
-        self.init_openai_client()
         """使用 LLM 和 多个 MCP 服务器提供的工具处理查询"""
         # 创建一个临时conversation_id变量，但先不立即创建数据库记录
         is_existing_conversation = False
@@ -81,12 +107,11 @@ class MCPClient:
                 
                 from mini_cursor.core.config import OPENAI_MODEL
                 
-                stream_response = await self.client.chat.completions.create(
-                    model=OPENAI_MODEL,
+                stream_response = await self._create_chat_completion(
                     messages=messages,
-                    temperature=0.3,
                     tools=all_tools,
-                    stream=True
+                    stream=True,
+                    temperature=0.3
                 )
                 
                 # 处理流式响应
@@ -192,11 +217,11 @@ class MCPClient:
                 # 确保使用最新的模型配置
                 from mini_cursor.core.config import OPENAI_MODEL
                     
-                response = await self.client.chat.completions.create(
-                    model=OPENAI_MODEL,
+                response = await self._create_chat_completion(
                     messages=messages,
-                    temperature=0.3,
-                    tools=all_tools
+                    tools=all_tools,
+                    stream=False,
+                    temperature=0.3
                 )
                 message = response.choices[0].message
                 
@@ -362,8 +387,7 @@ class MCPClient:
 
                 # Call LLM again
                 if stream:
-                    stream_response = await self.client.chat.completions.create(
-                        model=OPENAI_MODEL,
+                    stream_response = await self._create_chat_completion(
                         messages=messages,
                         tools=all_tools,
                         stream=True,
@@ -423,10 +447,10 @@ class MCPClient:
                          } for t in message.tool_calls])
 
                 else: # Non-streaming case
-                    response = await self.client.chat.completions.create(
-                        model=OPENAI_MODEL,
+                    response = await self._create_chat_completion(
                         messages=messages,
                         tools=all_tools,
+                        stream=False,
                         temperature=0.3
                     )
                     message = response.choices[0].message

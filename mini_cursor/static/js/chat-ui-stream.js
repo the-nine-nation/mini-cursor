@@ -180,44 +180,52 @@ Object.assign(ChatUI, {
                 break;
                 
             case 'message':
-                // 如果是第一次收到消息事件，并且还没有显示过思考内容
-                if (this.state.isThinkingFirst && !this.state.thinkingMessageContainer && !this.state.responseMessageContainer) {
-                    // 先创建最终回答的容器，但放在后面
-                    this.state.currentAssistantContainer = this.addMessage('', '', false, 'final-response');
-                } else if (this.state.lastEventWasToolCall) {
-                    // 在工具调用之后，创建新的消息容器
-                    this.state.currentAssistantContainer = this.addMessage('', '', false, 'final-response');
-                    this.state.lastEventWasToolCall = false;
-                } else if (!this.state.responseMessageContainer && !this.state.currentAssistantContainer) {
-                    // 如果还没有创建任何消息容器
-                    this.state.currentAssistantContainer = this.addMessage('', '', false, 'final-response');
-                }
+                // 获取内容，用于检查是否有实际内容
+                const content = eventData.content || eventData.text || '';
                 
-                // 获取消息元素
-                if (this.state.currentAssistantContainer && !this.state.responseMessageContainer) {
-                    const messageElement = this.state.currentAssistantContainer.querySelector('.message');
-                    if (messageElement) {
-                        const textContainer = messageElement.querySelector('.message-text');
-                        if (textContainer) {
-                            this.state.responseMessageContainer = textContainer;
+                // 只在有内容时处理容器创建
+                if (content) {
+                    // 如果是第一次收到消息事件，并且还没有显示过思考内容
+                    if (this.state.isThinkingFirst && !this.state.thinkingMessageContainer && !this.state.responseMessageContainer) {
+                        // 先创建最终回答的容器，但放在后面
+                        this.state.currentAssistantContainer = this.addMessage('', '', false, 'final-response');
+                    } else if (this.state.lastEventWasToolCall) {
+                        // 在工具调用之后，只有当有实际内容时才创建新的消息容器
+                        this.state.currentAssistantContainer = this.addMessage('', '', false, 'final-response');
+                        this.state.lastEventWasToolCall = false;
+                    } else if (!this.state.responseMessageContainer && !this.state.currentAssistantContainer) {
+                        // 如果还没有创建任何消息容器
+                        this.state.currentAssistantContainer = this.addMessage('', '', false, 'final-response');
+                    }
+                    
+                    // 获取消息元素
+                    if (this.state.currentAssistantContainer && !this.state.responseMessageContainer) {
+                        const messageElement = this.state.currentAssistantContainer.querySelector('.message');
+                        if (messageElement) {
+                            const textContainer = messageElement.querySelector('.message-text');
+                            if (textContainer) {
+                                this.state.responseMessageContainer = textContainer;
+                            }
                         }
                     }
-                }
-                
-                // 追加新内容
-                const content = eventData.content || eventData.text || '';
-                this.state.currentResponseText += content;
-                if (this.state.responseMessageContainer) {
-                    // 检查内容是否需要保留格式（如数据库内容）
-                    if (this.isFormattedDatabaseContent(this.state.currentResponseText)) {
-                        // 直接使用文本内容，不使用renderMarkdown
-                        this.state.responseMessageContainer.textContent = this.state.currentResponseText;
-                    } else {
-                        // 使用Markdown处理，支持列表格式
-                        this.state.responseMessageContainer.innerHTML = this.processMarkdown(this.state.currentResponseText);
+                    
+                    // 追加新内容
+                    this.state.currentResponseText += content;
+                    if (this.state.responseMessageContainer) {
+                        // 检查内容是否需要保留格式（如数据库内容）
+                        if (this.isFormattedDatabaseContent(this.state.currentResponseText)) {
+                            // 直接使用文本内容，不使用renderMarkdown
+                            this.state.responseMessageContainer.textContent = this.state.currentResponseText;
+                        } else {
+                            // 使用Markdown处理，支持列表格式
+                            this.state.responseMessageContainer.innerHTML = this.processMarkdown(this.state.currentResponseText);
+                        }
                     }
+                    this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
+                } else if (this.state.lastEventWasToolCall) {
+                    // 当在工具调用后收到空消息时，不创建新容器，只重置标记
+                    this.state.lastEventWasToolCall = false;
                 }
-                this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
                 break;
                 
             case 'thinking':
@@ -412,6 +420,18 @@ Object.assign(ChatUI, {
                     
                     // 保存处理后的文本
                     this.state.currentResponseText = strippedText;
+                } else if (this.state.currentAssistantContainer && 
+                          (!this.state.currentResponseText || this.state.currentResponseText.trim() === '')) {
+                    // 检查并移除空的消息气泡
+                    const messageElement = this.state.currentAssistantContainer.querySelector('.message');
+                    if (messageElement && !messageElement.classList.contains('with-tools') && 
+                        (!messageElement.textContent || messageElement.textContent.trim() === '')) {
+                        // 移除整个空消息容器
+                        this.elements.messagesContainer.removeChild(this.state.currentAssistantContainer);
+                        // 重置当前助手容器变量
+                        this.state.currentAssistantContainer = null;
+                        this.state.responseMessageContainer = null;
+                    }
                 }
                 
                 // 处理思考内容以移除多余空行

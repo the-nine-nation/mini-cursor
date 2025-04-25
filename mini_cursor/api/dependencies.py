@@ -81,9 +81,6 @@ async def get_client():
         client.message_manager = message_manager
         
         try:
-            # 初始化OpenAI客户端
-            client.init_openai_client()
-            # 成功初始化，清除可能存在的错误
             if pid in configuration_errors:
                 configuration_errors[pid].pop('openai_api', None)
         except Exception as e:
