@@ -1,5 +1,6 @@
 from mini_cursor.core.config import Colors
 
+
 def display_tool_history(tool_history):
     """显示工具调用历史"""
     if not tool_history:

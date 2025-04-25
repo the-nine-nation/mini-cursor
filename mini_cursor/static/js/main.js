@@ -25,70 +25,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // 检查外部库是否加载成功，如果失败则提示用户刷新页面
     setTimeout(checkExternalLibraries, 2000);
     
-    // 添加工作目录刷新功能
-    setTimeout(refreshWorkspacePath, 1000);
-    
     console.log('API Demo界面已初始化完成');
 });
-
-/**
- * 刷新工作目录显示
- */
-function refreshWorkspacePath() {
-    const workspacePathElement = document.getElementById('workspace-path');
-    if (!workspacePathElement) return;
-    
-    // 尝试直接从当前URL推断工作目录
-    const url = window.location.href;
-    
-    // 从URL中提取项目根目录（最可能的路径）
-    let rootPath = '';
-    
-    if (url.includes('/mini-cursor/') || url.includes('/mini_cursor/')) {
-        // 使用正则表达式提取到mini-cursor或mini_cursor的路径
-        const match = url.match(/(.*?\/(?:mini-cursor|mini_cursor))/);
-        if (match && match[1]) {
-            rootPath = match[1];
-        }
-    }
-    
-    // 判断当前显示的工作目录是否需要更新
-    const currentPath = workspacePathElement.textContent;
-    if (currentPath === '加载中...' || 
-        currentPath.includes('/static/') || 
-        currentPath.includes('/libs/')) {
-        
-        if (rootPath) {
-            workspacePathElement.textContent = rootPath;
-            console.log('已更新工作目录显示:', rootPath);
-        } else {
-            // 如果无法从URL推断，尝试从API重新获取
-            console.log('尝试从API刷新工作目录...');
-            if (typeof API !== 'undefined' && API.getApiInfo) {
-                API.getApiInfo()
-                    .then(data => {
-                        if (data && data.workspace) {
-                            let workspace = data.workspace;
-                            // 清理路径，确保只显示项目根目录
-                            if (workspace.includes('/static/') || workspace.includes('/mini_cursor/')) {
-                                workspace = workspace.split('/mini_cursor')[0];
-                                if (workspace.endsWith('/')) {
-                                    workspace += 'mini_cursor';
-                                } else {
-                                    workspace += '/mini_cursor';
-                                }
-                            }
-                            workspacePathElement.textContent = workspace;
-                            console.log('已从API更新工作目录:', workspace);
-                        }
-                    })
-                    .catch(err => {
-                        console.error('刷新工作目录失败:', err);
-                    });
-            }
-        }
-    }
-}
 
 /**
  * 检查外部库是否成功加载

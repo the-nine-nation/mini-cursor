@@ -20,6 +20,12 @@ OPENAI_API_KEY = None
 OPENAI_BASE_URL = None
 OPENAI_MODEL = None
 
+
+
+
+
+
+
 # 设置超时时间（秒）
 TOOL_CALL_TIMEOUT = 15
 # 设置是否显示详细日志
@@ -30,7 +36,6 @@ MCP_CONFIG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "core
 # 初始化函数，用于首次加载或重新加载配置
 def init_config():
     global OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
-    
     current_dir = Path(__file__).resolve()  # 当前文件的绝对路径
     # 向上查找包含mini_cursor目录的父目录
     project_root = current_dir.parent.parent.parent  # 这应该是mini-cursor目录

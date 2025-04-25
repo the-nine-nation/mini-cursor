@@ -120,12 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
             historyOverlay.style.display = 'none';
             
             // 清空当前消息区域并显示加载中
-            // 保留工作路径信息
-            const workspaceInfo = messagesContainer.querySelector('.message-info');
             messagesContainer.innerHTML = '';
-            if (workspaceInfo) {
-                messagesContainer.appendChild(workspaceInfo);
-            }
             
             addInfoMessage(`正在加载对话: ${title}`);
             
@@ -229,21 +224,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const conversation = data.conversation;
 
-            // 清空现有内容 (确保在加载新内容前是空的，保留工作目录信息)
-            const workspaceInfo = messagesContainer.querySelector('.message-info');
+            // 清空现有内容
             messagesContainer.innerHTML = '';
-            if (workspaceInfo) {
-                messagesContainer.appendChild(workspaceInfo);
-            } else {
-                // 添加工作目录信息
-                const workspacePath = document.getElementById('workspace-path');
-                if (workspacePath) {
-                     const workspaceInfoDiv = document.createElement('div');
-                     workspaceInfoDiv.className = 'message-info';
-                     workspaceInfoDiv.textContent = `当前工作目录: ${workspacePath.textContent || '未知'}`; 
-                     messagesContainer.appendChild(workspaceInfoDiv);
-                }
-            }
             
             // Render messages
             if (typeof ChatUI !== 'undefined' && Array.isArray(conversation.messages)) {

@@ -9,21 +9,27 @@ from fastapi.responses import StreamingResponse
 from mini_cursor.core.mcp_client import MCPClient
 from mini_cursor.api.dependencies import get_client, os_version, shell_path
 from mini_cursor.api.models import ChatRequest
-from mini_cursor.prompt import system_prompt
+from mini_cursor.api.routers.prompt_manager import load_system_prompt
 
 router = APIRouter(
     prefix="/chat",
     tags=["chat"],
 )
-
+user_info="""
+<user_info>
+The user's OS version is %s. The absolute path of the user's workspace is %s. The user's shell is %s. 
+</user_info>
+"""
 @router.post("")
 async def chat(request: ChatRequest, client: MCPClient = Depends(get_client)):
     """聊天端点，使用 SSE 流式返回响应"""
     workspace = request.workspace or os.getcwd()
-    custom_system_prompt = request.system_prompt or system_prompt
+    custom_system_prompt = request.system_prompt or load_system_prompt()
     
     # 准备 SSE 流
     async def generate_stream():
+        # 初始化process_task为None，以便在发生异常时安全检查
+        process_task = None
         try:
             # 设置事件监听器以捕获更新并发送 SSE 事件
             event_queue = asyncio.Queue()
@@ -46,7 +52,7 @@ async def chat(request: ChatRequest, client: MCPClient = Depends(get_client)):
                 process_task = asyncio.create_task(
                     client.process_query(
                         request.query, 
-                        custom_system_prompt % (os_version, workspace, shell_path),
+                        custom_system_prompt+user_info%(os_version, workspace, shell_path),
                         stream=True
                     )
                 )
@@ -125,7 +131,7 @@ async def chat(request: ChatRequest, client: MCPClient = Depends(get_client)):
                 client.set_update_listener(original_listener)
                 
                 # 确保任务被取消（如果尚未完成）
-                if not process_task.done():
+                if process_task is not None and not process_task.done():
                     process_task.cancel()
                     try:
                         await process_task

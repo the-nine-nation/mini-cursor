@@ -31,28 +31,11 @@ const ConfigPanel = {
         this.elements.apiBase = document.getElementById('api-base');
         this.elements.apiKey = document.getElementById('api-key');
         this.elements.modelName = document.getElementById('model-name');
-        this.elements.workspacePath = document.getElementById('workspace-path');
         this.elements.clearHistoryBtn = document.getElementById('clear-history-btn');
         this.elements.editOpenaiConfigBtn = document.getElementById('edit-openai-config');
         this.elements.editMcpConfigBtn = document.getElementById('edit-mcp-config');
         this.elements.enableAllBtn = document.getElementById('enable-all-btn');
         this.elements.disableAllBtn = document.getElementById('disable-all-btn');
-        
-        // 设置临时工作目录显示，避免空白
-        if (this.elements.workspacePath) {
-            this.elements.workspacePath.textContent = '加载中...';
-            
-            // 尝试从URL获取基本信息
-            const currentPath = window.location.pathname;
-            if (currentPath.includes('/mini-cursor') || currentPath.includes('/mini_cursor')) {
-                const parts = window.location.href.split('/');
-                const index = parts.findIndex(part => part.includes('mini-cursor') || part.includes('mini_cursor'));
-                if (index > 0) {
-                    const basePath = parts.slice(0, index + 1).join('/');
-                    this.elements.workspacePath.textContent = basePath;
-                }
-            }
-        }
         
         // 绑定事件
         this.elements.clearHistoryBtn.addEventListener('click', this.handleClearHistory.bind(this));
@@ -76,22 +59,6 @@ const ConfigPanel = {
                 this.elements.apiBase.textContent = data.base_url;
                 this.elements.modelName.textContent = data.model;
                 
-                // 修正工作目录路径显示
-                let workspace = data.workspace || window.location.hostname;
-                
-                // 如果路径包含 mini_cursor/static 或其他子目录，截取到项目根目录
-                if (workspace.includes('/mini_cursor/static')) {
-                    workspace = workspace.split('/mini_cursor/static')[0];
-                } else if (workspace.includes('/static/libs')) {
-                    workspace = workspace.split('/static/libs')[0];
-                } else if (workspace.includes('/static')) {
-                    workspace = workspace.split('/static')[0];
-                } else if (workspace.includes('/mini_cursor')) {
-                    workspace = workspace.split('/mini_cursor')[0];
-                }
-                
-                this.elements.workspacePath.textContent = workspace;
-                
                 // 缓存配置
                 this.configCache.apiBase = data.base_url;
                 this.configCache.model = data.model;
@@ -100,7 +67,6 @@ const ConfigPanel = {
                 console.error('Error fetching API info:', error);
                 this.elements.apiBase.textContent = 'Error loading';
                 this.elements.modelName.textContent = 'Error loading';
-                this.elements.workspacePath.textContent = '未知工作目录';
             });
     },
     
@@ -154,12 +120,6 @@ const ConfigPanel = {
                 infoDiv2.className = 'message-info';
                 infoDiv2.textContent = `新会话已创建，ID: ${data.conversation_id}`;
                 messagesContainer.appendChild(infoDiv2);
-                
-                // 添加工作目录信息
-                const infoDiv3 = document.createElement('div');
-                infoDiv3.className = 'message-info';
-                infoDiv3.textContent = `当前工作目录: ${this.elements.workspacePath.textContent}`;
-                messagesContainer.appendChild(infoDiv3);
                 
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 
