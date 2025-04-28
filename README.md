@@ -10,6 +10,10 @@ This project supports fully local/intranet deployment with no possibility of dat
 
 ## Update
 
+**2025-04-28**: MCP services for MySQL and ClickHouse will no longer be included as default MCP services.
+- MySQL MCP repository: [mysql-mcp](https://github.com/the-nine-nation/mysql-mcp)
+- ClickHouse MCP repository: [clickhouse-mcp](https://github.com/the-nine-nation/clickhouse-mcp)
+
 **20250422**: Added web interface that can be launched directly from the CLI with `mini-cursor web`.
 
 **20250421**: Added support for inference models like deepseek-r1.
@@ -72,34 +76,6 @@ The command line will show the location of the generated JSON file. If you want 
         "env": {
             "BOCHAAI_API_KEY": "API key from https://open.bochaai.com/ to enable web search for the model"
         }
-    },
-    "mysql": {
-        "command": sys.executable,
-        "args": [mysql_mcp_py],
-        "env": {
-            "MYSQL_ENABLED": "true",
-            "MYSQL_HOST": "MySQL database IP",
-            "MYSQL_PORT": "MySQL database port",
-            "MYSQL_DATABASE": "MySQL database name",
-            "MYSQL_USERNAME": "MySQL database username",
-            "MYSQL_PASSWORD": "MySQL database password",
-            "MYSQL_POOL_MINSIZE": "1",
-            "MYSQL_POOL_MAXSIZE": "10",
-            "MYSQL_RESOURCE_DESC_FILE": "Path to MySQL database resource description file"
-        }
-    },
-    "clickhouse": {
-        "command": sys.executable,
-        "args": [clickhouse_mcp_py],
-        "env": {
-            "CLICKHOUSE_ENABLED": "true",
-            "CLICKHOUSE_HOST": "ClickHouse database IP",
-            "CLICKHOUSE_PORT": "ClickHouse database port",
-            "CLICKHOUSE_DATABASE": "ClickHouse database name",
-            "CLICKHOUSE_USERNAME": "ClickHouse database username",
-            "CLICKHOUSE_PASSWORD": "ClickHouse database password",
-            "CLICKHOUSE_RESOURCE_DESC_FILE": "Path to ClickHouse database resource description file"
-            }
     }
   }
 }

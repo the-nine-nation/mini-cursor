@@ -12,6 +12,10 @@ cursor一个月20美金,对于很多人而言,这是一个星期的饭食.cursor
 
 ## 更新
 
+**2025-04-28**: 针对MySQL和ClickHouse的MCP服务将不再作为默认MCP服务。
+- MySQL的MCP地址: [mysql-mcp](https://github.com/the-nine-nation/mysql-mcp)
+- ClickHouse的MCP地址: [clickhouse-mcp](https://github.com/the-nine-nation/clickhouse-mcp)
+
 **20250422**: 新增Web界面，可直接通过命令行使用 `mini-cursor web` 启动。
 
 **20250421**: 增加了对推理模型如deepseek-r1的支持。
@@ -74,34 +78,6 @@ mini-cursor init
         "env": {
             "BOCHAAI_API_KEY": "bochaai的api,请进入https://open.bochaai.com/获取api,使模型能够进行web搜索"
         }
-    },
-    "mysql": {
-        "command": sys.executable,
-        "args": [mysql_mcp_py],
-        "env": {
-            "MYSQL_ENABLED": "true",
-            "MYSQL_HOST": "mysql数据库的ip",
-            "MYSQL_PORT": "mysql数据库的端口",
-            "MYSQL_DATABASE": "mysql数据库的名称",
-            "MYSQL_USERNAME": "mysql数据库的用户名",
-            "MYSQL_PASSWORD": "mysql数据库的密码",
-            "MYSQL_POOL_MINSIZE": "1",
-            "MYSQL_POOL_MAXSIZE": "10",
-            "MYSQL_RESOURCE_DESC_FILE": "mysql数据库的资源描述文件路径"
-        }
-    },
-    "clickhouse": {
-        "command": sys.executable,
-        "args": [clickhouse_mcp_py],
-        "env": {
-            "CLICKHOUSE_ENABLED": "true",
-            "CLICKHOUSE_HOST": "clickhouse数据库的ip",
-            "CLICKHOUSE_PORT": "clickhouse数据库的端口",
-            "CLICKHOUSE_DATABASE": "clickhouse数据库的名称",
-            "CLICKHOUSE_USERNAME": "clickhouse数据库的用户名",
-            "CLICKHOUSE_PASSWORD": "clickhouse数据库的密码",
-            "CLICKHOUSE_RESOURCE_DESC_FILE": "clickhouse数据库的资源描述文件路径"
-            }
     }
   }
 }
