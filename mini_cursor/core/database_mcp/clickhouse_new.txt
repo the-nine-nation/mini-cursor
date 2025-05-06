@@ -1,0 +1,10 @@
+** clickhouse数据库中一部分关键表信息 **
+表名	描述
+security_log	日志宽表
+repmt_insight_anomaly_base	异常表
+repmt_insight_threat_base	威胁表
+mt_base_account	账号基础信息表
+mt_base_application	应用基础信息表
+mt_base_data	数据基础信息表
+mt_base_device	设备基础信息表
+mt_base_person	用户基础信息表
