@@ -103,3 +103,29 @@ class MessageManager:
     def get_messages(self):
         """获取完整的消息历史"""
         return self.message_history 
+    
+if __name__ == "__main__":
+    message_manager = MessageManager()
+    # 基本消息测试
+    message_manager.add_user_message("你好")
+    message_manager.add_assistant_message("你好")
+    print("基本消息测试:")
+    print(message_manager.get_messages())
+    
+    # 工具调用测试
+    message_manager.clear_message_history()
+    message_manager.add_user_message("查询天气")
+    tool_calls = [{
+        "id": "call_abc123",
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "arguments": "{\"location\": \"北京\"}"
+        }
+    }]
+    message_manager.add_assistant_message("我需要查询天气信息", tool_calls)
+    message_manager.add_tool_result("call_abc123", "北京今天晴朗，温度25°C")
+    message_manager.add_assistant_message("根据查询，北京今天天气晴朗，温度25°C")
+    
+    print("\n工具调用测试:")
+    print(message_manager.get_messages())

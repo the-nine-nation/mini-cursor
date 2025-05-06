@@ -170,7 +170,7 @@ class MCPClient:
                             # 初始化新的工具调用或更新现有的
                             tool_call_id = tool_call_delta.index
                             while len(tool_calls) <= tool_call_id:
-                                tool_calls.append({"id": "", "function": {"name": "", "arguments": ""}})
+                                tool_calls.append({"id": "","type":"function", "function": {"name": "", "arguments": ""}})
                             
                             if tool_call_delta.id:
                                 tool_calls[tool_call_id]["id"] = tool_call_delta.id
@@ -240,8 +240,19 @@ class MCPClient:
             # 处理工具调用
             while hasattr(message, 'tool_calls') and message.tool_calls:
                 print("\n")  # 为工具调用添加一个分隔行
+                
+                # 创建一个集合来存储已处理的工具调用ID，防止重复添加
+                processed_tool_call_ids = set()
+                
                 # 处理每个工具调用
                 for tool_call in message.tool_calls:
+                    # 跳过已处理的工具调用ID
+                    if tool_call.id in processed_tool_call_ids:
+                        continue
+                    
+                    # 记录这个工具调用ID已被处理
+                    processed_tool_call_ids.add(tool_call.id)
+                    
                     tool_name = tool_call.function.name
                     
                     # 查找提供该工具的服务器
@@ -281,6 +292,7 @@ class MCPClient:
                                  "arguments": tool_call.function.arguments # Store raw arguments string
                              }
                          }
+                        # 只添加一次工具调用消息
                         self.message_manager.add_assistant_message(None, tool_calls=[formatted_tool_call_for_history])
                         
                         # 通知工具调用开始
@@ -408,43 +420,54 @@ class MCPClient:
                         
                         # Also handle potential tool calls in this streamed response
                         if delta.tool_calls:
-                             for tool_call_delta in delta.tool_calls:
-                                 tool_call_id = tool_call_delta.index
-                                 while len(final_tool_calls) <= tool_call_id:
-                                     final_tool_calls.append({"id": "", "function": {"name": "", "arguments": ""}})
-                                 if tool_call_delta.id: final_tool_calls[tool_call_id]["id"] = tool_call_delta.id
-                                 if tool_call_delta.function:
-                                     if tool_call_delta.function.name: final_tool_calls[tool_call_id]["function"]["name"] = tool_call_delta.function.name
-                                     if tool_call_delta.function.arguments: final_tool_calls[tool_call_id]["function"]["arguments"] += tool_call_delta.function.arguments
+                            for tool_call_delta in delta.tool_calls:
+                                tool_call_id = tool_call_delta.index
+                                while len(final_tool_calls) <= tool_call_id:
+                                    final_tool_calls.append({"id": "", "function": {"name": "", "arguments": ""}})
+                                if tool_call_delta.id: final_tool_calls[tool_call_id]["id"] = tool_call_delta.id
+                                if tool_call_delta.function:
+                                    if tool_call_delta.function.name: final_tool_calls[tool_call_id]["function"]["name"] = tool_call_delta.function.name
+                                    if tool_call_delta.function.arguments: final_tool_calls[tool_call_id]["function"]["arguments"] += tool_call_delta.function.arguments
                     print() # Add a final newline after streaming
 
                     # Add complete message to history
-                    if final_collected_content or final_tool_calls: # Add if content or tool calls exist
+                    if final_collected_content: # Only add if content exists
                         final_text.append(final_collected_content)
-                        # Use the updated add_assistant_message that handles tool_calls
-                        self.message_manager.add_assistant_message(final_collected_content, final_tool_calls)
+                        # 只添加文本内容，工具调用将在稍后单独添加
+                        self.message_manager.add_assistant_message(final_collected_content)
                         collected_assistant_response = final_collected_content
                     
-                    # Reconstruct the message object to check for *new* tool calls
+                    # 处理工具调用，确保每个工具调用都是唯一的
+                    unique_tool_calls = []
+                    processed_ids = set()
+                    for t in final_tool_calls:
+                        if t["id"] and t["id"] not in processed_ids:
+                            processed_ids.add(t["id"])
+                            unique_tool_calls.append(type('obj', (object,), {
+                                'id': t["id"],
+                                'function': type('obj', (object,), {
+                                    'name': t["function"]["name"],
+                                    'arguments': t["function"]["arguments"]
+                                })
+                            }))
+                    
+                    # 更新message对象以便在下一循环中处理工具调用
                     message = type('obj', (object,), {
                         'content': final_collected_content,
-                        'tool_calls': [type('obj', (object,), {
-                            'id': t["id"],
-                            'function': type('obj', (object,), {
-                                'name': t["function"]["name"],
-                                'arguments': t["function"]["arguments"]
-                            })
-                        }) for t in final_tool_calls if t["id"]]
+                        'tool_calls': unique_tool_calls
                     })
-                    
+                        
                     # Update collected calls for DB if new calls exist
-                    if message.tool_calls:
-                         collected_tool_calls.extend([{
+                    if unique_tool_calls:
+                        # 清空已收集的工具调用并重新添加唯一的调用
+                        collected_tool_calls = [{
                             "tool_name": t.function.name,
                             "tool_args": t.function.arguments,
                             "tool_result": "(Pending execution)",
                             "is_error": False
-                         } for t in message.tool_calls])
+                        } for t in unique_tool_calls]
+                        
+                        continue  # Continue the loop to process these new tool calls
 
                 else: # Non-streaming case
                     response = await self._create_chat_completion(
@@ -455,26 +478,35 @@ class MCPClient:
                     )
                     message = response.choices[0].message
                     
-                    # 添加回复到历史记录，如果有内容或工具调用
-                    if message.content or (hasattr(message, 'tool_calls') and message.tool_calls):
-                        print(f"\n{Colors.CYAN}Response:{Colors.ENDC} {message.content or '(Tool Call)'}")
-                        if message.content:
-                           final_text.append(message.content)
-                        # Use the updated add_assistant_message that handles tool_calls
-                        self.message_manager.add_assistant_message(message.content, message.tool_calls)
+                    # 添加回复到历史记录，如果有内容
+                    if message.content:
+                        print(f"\n{Colors.CYAN}Response:{Colors.ENDC} {message.content}")
+                        final_text.append(message.content)
+                        # 只添加文本内容，不添加工具调用
+                        self.message_manager.add_assistant_message(message.content)
                         collected_assistant_response = message.content
                         # <<< FIX: Notify frontend about the final non-streamed message >>>
-                        if message.content: # Only notify if there's text content
-                           self.notify_update('assistant_message', message.content)
+                        self.notify_update('assistant_message', message.content)
                     
-                    # Update collected calls for DB if new calls exist
+                    # 处理工具调用，确保每个工具调用都是唯一的
                     if hasattr(message, 'tool_calls') and message.tool_calls:
-                         collected_tool_calls.extend([{
-                            "tool_name": t.function.name,
-                            "tool_args": t.function.arguments,
-                            "tool_result": "(Pending execution)",
-                            "is_error": False
-                         } for t in message.tool_calls])
+                        # 只收集唯一的工具调用
+                        processed_ids = set()
+                        unique_calls = []
+                        for t in message.tool_calls:
+                            if t.id not in processed_ids:
+                                processed_ids.add(t.id)
+                                unique_calls.append({
+                                    "tool_name": t.function.name,
+                                    "tool_args": t.function.arguments,
+                                    "tool_result": "(Pending execution)",
+                                    "is_error": False
+                                })
+                        
+                        # 更新收集的工具调用
+                        collected_tool_calls.extend(unique_calls)
+                        
+                        continue  # Continue the loop to process these new tool calls
 
                 # The loop condition `while hasattr(message, 'tool_calls') and message.tool_calls:`
                 # will now correctly check the *new* message obtained from the second LLM call.

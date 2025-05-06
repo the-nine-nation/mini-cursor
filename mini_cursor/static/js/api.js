@@ -22,9 +22,26 @@ const API = {
      */
     getTools: function() {
         return fetch('/tools')
-            .then(response => response.json())
+            .then(response => {
+                // 检查HTTP状态码，如果不是200 OK则抛出错误
+                if (!response.ok) {
+                    // 尝试解析可能的JSON错误信息
+                    return response.text().then(text => {
+                        try {
+                            const jsonError = JSON.parse(text);
+                            throw new Error(`API错误: ${response.status} ${response.statusText} - ${jsonError.message || '未知错误'}`);
+                        } catch (parseError) {
+                            // 如果解析失败，使用原始文本作为错误详情
+                            throw new Error(`API错误: ${response.status} ${response.statusText} - ${text}`);
+                        }
+                    });
+                }
+                // 如果状态码正常，解析JSON
+                return response.json();
+            })
             .catch(error => {
                 console.error('Error loading tools:', error);
+                // 这里可以添加统一的错误处理逻辑
                 throw error;
             });
     },

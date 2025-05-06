@@ -6,6 +6,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import pathlib
 
 from mini_cursor.core.config import Colors, OPENAI_BASE_URL, OPENAI_MODEL, TOOL_CALL_TIMEOUT, VERBOSE_LOGGING
 from mini_cursor.api.dependencies import static_dir, client_cache, server_manager_cache, tool_manager_cache
@@ -55,6 +57,11 @@ app.add_middleware(
 
 # 挂载静态文件
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+# 添加favicon路由
+@app.get('/favicon.ico', include_in_schema=False)
+async def favicon():
+    return FileResponse(os.path.join(static_dir, 'favicon.ico'))
 
 # 包含所有路由器
 app.include_router(root.router)
