@@ -101,12 +101,12 @@ class MCPClient:
         collected_tool_calls = []
         
         try:
-            # 初始化 LLM API 调用，使用流式响应
-            if stream:
-                # 确保使用最新的模型配置
-                
-                from mini_cursor.core.config import OPENAI_MODEL
-                
+            # 初始化 LLM API 调用
+            
+            # 处理工具调用循环
+            while True:
+                # 获取大模型响应
+
                 stream_response = await self._create_chat_completion(
                     messages=messages,
                     tools=all_tools,
@@ -114,11 +114,12 @@ class MCPClient:
                     temperature=0.3
                 )
                 
-                # 处理流式响应
+                # 初始化收集变量
                 collected_content = ""
                 collected_reasoning = ""
                 tool_calls = []
                 
+                # 处理流式响应
                 print(f"\n{Colors.BOLD}{Colors.CYAN}Response:{Colors.ENDC} ", end="", flush=True)
                 async for chunk in stream_response:
                     delta = chunk.choices[0].delta
@@ -130,7 +131,7 @@ class MCPClient:
                         # 通知内容更新
                         self.notify_update('assistant_message', delta.content)
                     
-                    # 处理 reasoning_content（思考过程，deepseek-r1等模型会返回）
+                    # 处理 reasoning_content（思考过程）
                     reasoning_chunk = None
                     if hasattr(delta, 'message') and hasattr(delta.message, 'reasoning_content'):
                         reasoning_chunk = delta.message.reasoning_content
@@ -181,79 +182,61 @@ class MCPClient:
                                 
                                 if tool_call_delta.function.arguments:
                                     tool_calls[tool_call_id]["function"]["arguments"] += tool_call_delta.function.arguments
-                
-                # 完成流式处理，构建最终消息
-                collected_reasoning_content = ""
-                
-                # 用于收集整个流式过程中可能的reasoning_content（针对可能的完整回传情况）
-                for chunk in stream_response.__dict__.get('_response_data', {}).get('choices', []):
-                    if chunk.get('delta', {}).get('reasoning_content'):
-                        collected_reasoning_content += chunk['delta']['reasoning_content']
-                
-                # 如果前面流式过程中没有收集到reasoning_content但最终数据里有，则显示
-                if not collected_reasoning and collected_reasoning_content:
-                    print(f"\n{Colors.BOLD}{Colors.YELLOW}[思考过程]{Colors.ENDC} {Colors.YELLOW}{collected_reasoning_content}{Colors.ENDC}", flush=True)
-                    collected_reasoning = collected_reasoning_content
-                
-                message = type('obj', (object,), {
+                    
+                    # 完成流式处理，构建最终消息
+                    collected_reasoning_content = ""
+                    
+                    # 用于收集整个流式过程中可能的reasoning_content（针对可能的完整回传情况）
+                    for chunk in stream_response.__dict__.get('_response_data', {}).get('choices', []):
+                        if chunk.get('delta', {}).get('reasoning_content'):
+                            collected_reasoning_content += chunk['delta']['reasoning_content']
+                    
+                    # 如果前面流式过程中没有收集到reasoning_content但最终数据里有，则显示
+                    if not collected_reasoning and collected_reasoning_content:
+                        print(f"\n{Colors.BOLD}{Colors.YELLOW}[思考过程]{Colors.ENDC} {Colors.YELLOW}{collected_reasoning_content}{Colors.ENDC}", flush=True)
+                        collected_reasoning = collected_reasoning_content
+                    
+                # 构建消息对象
+                message = {
+                    'role': 'assistant',
                     'content': collected_content,
                     'reasoning_content': collected_reasoning if collected_reasoning else None,
-                    'tool_calls': [type('obj', (object,), {
-                        'id': t["id"],
-                        'function': type('obj', (object,), {
-                            'name': t["function"]["name"],
-                            'arguments': t["function"]["arguments"]
-                        })
-                    }) for t in tool_calls if t["id"]]
-                })
+                    'tool_calls': [t for t in tool_calls if t["id"]]
+                }
                 
-                if collected_content:
-                    final_text.append(collected_content)
-                    # 将结果添加到消息历史
-                    self.message_manager.add_assistant_message(collected_content)
-                    collected_assistant_response = collected_content
-            else:
-                # 非流式处理
-                # 确保使用最新的模型配置
-                from mini_cursor.core.config import OPENAI_MODEL
+                # 更新历史和显示结果
+                if collected_content or ('tool_calls' in message and message['tool_calls']):
+                    if collected_content:
+                        final_text.append(collected_content)
                     
-                response = await self._create_chat_completion(
-                    messages=messages,
-                    tools=all_tools,
-                    stream=False,
-                    temperature=0.3
-                )
-                message = response.choices[0].message
+                    # 同时添加内容和工具调用到消息历史
+                    self.message_manager.add_assistant_message(
+                        llm_response=message
+                    )
+                    
+                    if collected_content:
+                        collected_assistant_response = collected_content
                 
-                # 处理content内容
-                if message.content:
-                    print(f"\nResponse: {message.content}")
-                    final_text.append(message.content)
-                    # 将结果添加到消息历史
-                    self.message_manager.add_assistant_message(message.content)
-                    collected_assistant_response = message.content
+                # 检查是否有工具调用需要处理
+                if 'tool_calls' not in message or not message['tool_calls']:
+                    messages = self.message_manager.get_messages()
+                    # 没有工具调用，结束循环
+                    break
                 
-                # 处理思考过程（不管有没有content，都处理reasoning_content）  
-                if hasattr(message, 'reasoning_content') and message.reasoning_content:
-                    print(f"\n{Colors.BOLD}{Colors.YELLOW}[思考过程]{Colors.ENDC} {Colors.YELLOW}{message.reasoning_content}{Colors.ENDC}", flush=True)
-            
-            # 处理工具调用
-            while hasattr(message, 'tool_calls') and message.tool_calls:
                 print("\n")  # 为工具调用添加一个分隔行
-                
                 # 创建一个集合来存储已处理的工具调用ID，防止重复添加
                 processed_tool_call_ids = set()
                 
                 # 处理每个工具调用
-                for tool_call in message.tool_calls:
+                for tool_call in message['tool_calls']:
                     # 跳过已处理的工具调用ID
-                    if tool_call.id in processed_tool_call_ids:
+                    if tool_call["id"] in processed_tool_call_ids:
                         continue
                     
                     # 记录这个工具调用ID已被处理
-                    processed_tool_call_ids.add(tool_call.id)
+                    processed_tool_call_ids.add(tool_call["id"])
                     
-                    tool_name = tool_call.function.name
+                    tool_name = tool_call["function"]["name"]
                     
                     # 查找提供该工具的服务器
                     server_name, tool = self.tool_manager.find_tool_server(tool_name)
@@ -261,7 +244,7 @@ class MCPClient:
                         error_msg = f"Tool {tool_name} is not available from any connected MCP server"
                         print(f"\n{Colors.RED}{error_msg}{Colors.ENDC}")
                         # 添加一个工具响应
-                        self.message_manager.add_tool_result(tool_call.id, error_msg)
+                        self.message_manager.add_tool_result(tool_call["id"], error_msg)
                         # 通知工具调用错误
                         self.notify_update('tool_error', {'name': tool_name, 'error': error_msg})
                         
@@ -275,25 +258,12 @@ class MCPClient:
                         continue
                     
                     # 解析工具参数
-                    tool_args = self.tool_manager.parse_tool_arguments(tool_call.function.arguments)
+                    tool_args = self.tool_manager.parse_tool_arguments(tool_call["function"]["arguments"])
                     
                     # 尝试执行工具
                     try:
                         # 记录工具调用到历史管理器
                         call_id = self.tool_history_manager.record_tool_call(tool_name, tool_args)
-                        
-                        # <<< FIX: Use add_assistant_message to record tool call >>>
-                        # Correctly format the tool call for add_assistant_message
-                        formatted_tool_call_for_history = {
-                             "id": tool_call.id,
-                             "type": "function",
-                             "function": {
-                                 "name": tool_name,
-                                 "arguments": tool_call.function.arguments # Store raw arguments string
-                             }
-                         }
-                        # 只添加一次工具调用消息
-                        self.message_manager.add_assistant_message(None, tool_calls=[formatted_tool_call_for_history])
                         
                         # 通知工具调用开始
                         self.notify_update('tool_call', {'id': call_id, 'name': tool_name, 'arguments': tool_args})
@@ -313,7 +283,7 @@ class MCPClient:
                             self.tool_history_manager.record_tool_result(call_id, None, error_msg)
                             
                             # 添加超时结果到历史记录
-                            self.message_manager.add_tool_result(tool_call.id, f"Error: {error_msg}")
+                            self.message_manager.add_tool_result(tool_call["id"], f"Error: {error_msg}")
                             
                             # 收集工具调用错误
                             collected_tool_calls.append({
@@ -331,7 +301,7 @@ class MCPClient:
                         self.tool_history_manager.record_tool_result(call_id, result)
                         
                         # 添加工具结果到历史记录
-                        self.message_manager.add_tool_result(tool_call.id, result)
+                        self.message_manager.add_tool_result(tool_call["id"], result)
                         
                         # 将工具调用和结果添加到历史
                         self.tool_history.append({
@@ -373,7 +343,7 @@ class MCPClient:
                             self.tool_history_manager.record_tool_result(call_id, None, error_msg)
                         
                         # 添加错误结果到历史记录
-                        self.message_manager.add_tool_result(tool_call.id, f"Error: {str(e)}")
+                        self.message_manager.add_tool_result(tool_call["id"], f"Error: {str(e)}")
                         
                         # 收集工具调用错误
                         collected_tool_calls.append({
@@ -390,124 +360,13 @@ class MCPClient:
                             'error': error_msg
                         })
                 
-                # 获取最新的响应
-                # （注意：这里可能应该使用原始响应/函数调用格式，但为了简化，我们重用现有的消息结构）
+                # 获取最新的响应消息
                 messages = self.message_manager.get_messages()
                 
-                # 再次调用LLM获取回复
+                # 提示再次询问AI
                 print("\n\n再次询问AI以获取回复...\n")
-
-                # Call LLM again
-                if stream:
-                    stream_response = await self._create_chat_completion(
-                        messages=messages,
-                        tools=all_tools,
-                        stream=True,
-                        temperature=0.3
-                    )
-                    
-                    final_collected_content = ""
-                    final_tool_calls = [] # Store potential tool calls from this final response
-                    
-                    print(f"\n{Colors.BOLD}{Colors.CYAN}Response:{Colors.ENDC} ", end="", flush=True) # Add newline before final response
-                    async for chunk in stream_response:
-                        delta = chunk.choices[0].delta
-                        if delta.content:
-                            print(f"{delta.content}", end="", flush=True)
-                            final_collected_content += delta.content
-                            # <<< FIX: Notify frontend about the final streamed message >>>
-                            self.notify_update('assistant_message', delta.content) 
-                        
-                        # Also handle potential tool calls in this streamed response
-                        if delta.tool_calls:
-                            for tool_call_delta in delta.tool_calls:
-                                tool_call_id = tool_call_delta.index
-                                while len(final_tool_calls) <= tool_call_id:
-                                    final_tool_calls.append({"id": "", "function": {"name": "", "arguments": ""}})
-                                if tool_call_delta.id: final_tool_calls[tool_call_id]["id"] = tool_call_delta.id
-                                if tool_call_delta.function:
-                                    if tool_call_delta.function.name: final_tool_calls[tool_call_id]["function"]["name"] = tool_call_delta.function.name
-                                    if tool_call_delta.function.arguments: final_tool_calls[tool_call_id]["function"]["arguments"] += tool_call_delta.function.arguments
-                    print() # Add a final newline after streaming
-
-                    # Add complete message to history
-                    if final_collected_content: # Only add if content exists
-                        final_text.append(final_collected_content)
-                        # 只添加文本内容，工具调用将在稍后单独添加
-                        self.message_manager.add_assistant_message(final_collected_content)
-                        collected_assistant_response = final_collected_content
-                    
-                    # 处理工具调用，确保每个工具调用都是唯一的
-                    unique_tool_calls = []
-                    processed_ids = set()
-                    for t in final_tool_calls:
-                        if t["id"] and t["id"] not in processed_ids:
-                            processed_ids.add(t["id"])
-                            unique_tool_calls.append(type('obj', (object,), {
-                                'id': t["id"],
-                                'function': type('obj', (object,), {
-                                    'name': t["function"]["name"],
-                                    'arguments': t["function"]["arguments"]
-                                })
-                            }))
-                    
-                    # 更新message对象以便在下一循环中处理工具调用
-                    message = type('obj', (object,), {
-                        'content': final_collected_content,
-                        'tool_calls': unique_tool_calls
-                    })
-                        
-                    # Update collected calls for DB if new calls exist
-                    if unique_tool_calls:
-                        # 清空已收集的工具调用并重新添加唯一的调用
-                        collected_tool_calls = [{
-                            "tool_name": t.function.name,
-                            "tool_args": t.function.arguments,
-                            "tool_result": "(Pending execution)",
-                            "is_error": False
-                        } for t in unique_tool_calls]
-                        
-                        continue  # Continue the loop to process these new tool calls
-
-                else: # Non-streaming case
-                    response = await self._create_chat_completion(
-                        messages=messages,
-                        tools=all_tools,
-                        stream=False,
-                        temperature=0.3
-                    )
-                    message = response.choices[0].message
-                    
-                    # 添加回复到历史记录，如果有内容
-                    if message.content:
-                        print(f"\n{Colors.CYAN}Response:{Colors.ENDC} {message.content}")
-                        final_text.append(message.content)
-                        # 只添加文本内容，不添加工具调用
-                        self.message_manager.add_assistant_message(message.content)
-                        collected_assistant_response = message.content
-                        # <<< FIX: Notify frontend about the final non-streamed message >>>
-                        self.notify_update('assistant_message', message.content)
-                    
-                    # 处理工具调用，确保每个工具调用都是唯一的
-                    if hasattr(message, 'tool_calls') and message.tool_calls:
-                        # 只收集唯一的工具调用
-                        processed_ids = set()
-                        unique_calls = []
-                        for t in message.tool_calls:
-                            if t.id not in processed_ids:
-                                processed_ids.add(t.id)
-                                unique_calls.append({
-                                    "tool_name": t.function.name,
-                                    "tool_args": t.function.arguments,
-                                    "tool_result": "(Pending execution)",
-                                    "is_error": False
-                                })
-                        
-                        # 更新收集的工具调用
-                        collected_tool_calls.extend(unique_calls)
-                        
-                        continue  # Continue the loop to process these new tool calls
-
+            
+            # 保存会话到数据库
             if len(self.message_manager.get_messages()) > 2:  
                 try:
                     # If it's a new conversation, create the record
@@ -523,10 +382,9 @@ class MCPClient:
                     if not self.current_conversation_id:
                          print(f"{Colors.RED}Error: Cannot save messages, current_conversation_id is not set.{Colors.ENDC}")
                          # Potentially raise an error or handle this case appropriately
-                         return "".join(final_text) # Exit early if no ID
+                         return "\n".join(final_text) if final_text else "" # Exit early if no ID
 
-                    # Add user query to DB (consider if this should happen earlier or only if saving)
-                    # Assuming we only want to save *completed* turns, let's add messages here.
+                    # Add user query to DB
                     self.db_manager.add_message_to_conversation(self.current_conversation_id, "user", query)
                     
                     # Add assistant response to DB if it exists
@@ -553,11 +411,6 @@ class MCPClient:
             else:
                  # Log that the conversation was not saved due to insufficient turns
                  print(f"\n{Colors.YELLOW}Conversation not saved: Insufficient turns (<= 1 turn completed).{Colors.ENDC}")
-                 # If it was a new conversation attempt, ensure no empty record was created
-                 # (The current logic creates the ID only if saving proceeds, which is good)
-                 # If it was supposed to be an existing conversation, clear the ID 
-                 # if no new messages were effectively added and saved.
-                 # This part might need more complex logic depending on desired behavior for existing convos.
                  pass # No explicit action needed here for now based on the logic structure
             
             # 尝试创建对话摘要
@@ -582,7 +435,7 @@ class MCPClient:
                     if VERBOSE_LOGGING:
                         print(f"{Colors.YELLOW}Failed to create conversation summary: {e}{Colors.ENDC}")
             
-            return "\n".join(final_text)
+            return "\n".join(final_text) if final_text else ""
             
         except Exception as e:
             error_message = f"\nError processing query: {e}"

@@ -36,33 +36,15 @@ class MessageManager:
         
         return self.message_history
     
-    def add_assistant_message(self, content, tool_calls=None):
+    def add_assistant_message(self,llm_response:dict=None):
         """添加助手消息到历史记录, 可选包含工具调用"""
-        message = {"role": "assistant"}
-        if content:
-            message["content"] = content
-        if tool_calls:
-             # Ensure tool_calls are in the correct format expected by OpenAI API
-             formatted_tool_calls = []
-             for tc in tool_calls:
-                 # Assuming tc is already in a dict-like structure 
-                 # from stream parsing or non-stream response
-                 # Handle both attribute access (for objects) and key access (for dicts)
-                 func = getattr(tc, 'function', tc.get('function')) if hasattr(tc, 'function') or isinstance(tc, dict) else None
-                 formatted_tool_calls.append({
-                     "id": getattr(tc, 'id', tc.get('id')) if hasattr(tc, 'id') or isinstance(tc, dict) else None,
-                     "type": "function", 
-                     "function": {
-                         "name": getattr(func, 'name', func.get('name')) if hasattr(func, 'name') or isinstance(func, dict) else None,
-                         "arguments": getattr(func, 'arguments', func.get('arguments')) if hasattr(func, 'arguments') or isinstance(func, dict) else None
-                     }
-                 })
-             message["tool_calls"] = formatted_tool_calls
-             
-        # Only add if there's content or tool_calls
-        if content or tool_calls:
-             self.message_history.append(message)
-             
+        
+        # 确保llm_response包含role字段
+        if llm_response and "role" not in llm_response:
+            llm_response["role"] = "assistant"
+        
+        self.message_history.append(llm_response)
+         
         return self.message_history
     
     def add_tool_result(self, tool_call_id, result_content):
@@ -108,7 +90,7 @@ if __name__ == "__main__":
     message_manager = MessageManager()
     # 基本消息测试
     message_manager.add_user_message("你好")
-    message_manager.add_assistant_message("你好")
+    message_manager.add_assistant_message({"role":"assistant","content":"你好"})
     print("基本消息测试:")
     print(message_manager.get_messages())
     
@@ -123,9 +105,9 @@ if __name__ == "__main__":
             "arguments": "{\"location\": \"北京\"}"
         }
     }]
-    message_manager.add_assistant_message("我需要查询天气信息", tool_calls)
+    message_manager.add_assistant_message({"role":"assistant","content":"我需要查询天气信息","tool_calls":tool_calls})
     message_manager.add_tool_result("call_abc123", "北京今天晴朗，温度25°C")
-    message_manager.add_assistant_message("根据查询，北京今天天气晴朗，温度25°C")
+    message_manager.add_assistant_message({"role":"assistant","content":"根据查询，北京今天天气晴朗，温度25°C"})
     
     print("\n工具调用测试:")
     print(message_manager.get_messages())

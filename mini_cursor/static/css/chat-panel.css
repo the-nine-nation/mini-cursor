@@ -165,6 +165,7 @@
 }
 
 /* 最终回复 - AI完成思考后的正式回复 */
+/* This is the outer container for a final response message */
 .final-response {
     background-color: white;
     color: #333;
@@ -173,6 +174,19 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     position: relative;
     margin-top: 0; /* 确保不会有额外的上边距 */
+    padding: 12px 16px; /* Added padding to make this the main visual bubble */
+}
+
+/* Styles for the inner .message.response div when it's inside a .final-response container */
+/* This removes the inner box effect for final responses */
+.message-container.final-response .message.response {
+    padding: 0;
+    border: none;
+    background-color: transparent;
+    box-shadow: none; /* Also remove shadow if any was inherited */
+    /* Resetting other properties that might contribute to box look, if necessary */
+    margin-bottom: 0; /* Usually .message has margin-bottom: 5px */
+    border-radius: 0; /* Reset border-radius if it was making it look distinct */
 }
 
 /* 确保普通消息内容正确显示 */

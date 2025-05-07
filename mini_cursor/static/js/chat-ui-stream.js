@@ -28,6 +28,8 @@ Object.assign(ChatUI, {
             currentAssistantContainer: null,
             pendingToolCalls: {}, // 确保初始化为空对象
             isThinkingFirst: true, // 标记思考过程应该先于回答显示
+            lastEventType: null, // 追踪上一个事件类型
+            messageContainers: [], // 用于跟踪按顺序创建的所有消息容器
         };
         
         // 添加调试信息
@@ -160,6 +162,83 @@ Object.assign(ChatUI, {
     },
     
     /**
+     * 创建消息容器（通用方法）
+     * @param {string} type - 消息类型
+     * @param {string} className - 额外的CSS类名
+     * @param {string} label - 标签文本（如果适用）
+     * @return {Object} 包含容器元素和文本容器的对象
+     */
+    createMessageContainer: function(type, className, label) {
+        const container = document.createElement('div');
+        container.className = `message-container assistant ${className || ''}`;
+        container.dataset.messageType = type;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+        
+        // 如果有标签，添加标签元素
+        if (label) {
+            const labelElement = document.createElement('div');
+            labelElement.className = `${type}-label`;
+            labelElement.textContent = label;
+            messageDiv.appendChild(labelElement);
+        }
+        
+        // 创建文本容器
+        const textContainer = document.createElement('pre');
+        textContainer.className = 'message-text';
+        textContainer.style.margin = '0';
+        textContainer.style.fontFamily = 'inherit';
+        textContainer.style.fontSize = 'inherit';
+        textContainer.style.whiteSpace = 'pre-wrap';
+        textContainer.style.wordBreak = 'break-word';
+        
+        messageDiv.appendChild(textContainer);
+        container.appendChild(messageDiv);
+        
+        return {
+            container: container,
+            textContainer: textContainer,
+            messageDiv: messageDiv
+        };
+    },
+    
+    /**
+     * 查找或创建工具消息容器
+     * @param {string} toolId - 工具调用ID
+     * @return {HTMLElement} 工具消息容器
+     */
+    getToolContainer: function(toolId) {
+        // 查找已有的工具容器
+        if (toolId && this.state.pendingToolCalls && this.state.pendingToolCalls[toolId]) {
+            const toolCall = this.state.pendingToolCalls[toolId];
+            if (toolCall.container) {
+                return toolCall.container;
+            }
+        }
+        
+        // 创建新的工具消息容器
+        const elements = this.createMessageContainer('tool', 'tool-container');
+        
+        // 如果有工具ID，存储容器引用
+        if (toolId && this.state.pendingToolCalls && this.state.pendingToolCalls[toolId]) {
+            this.state.pendingToolCalls[toolId].container = elements.container;
+        }
+        
+        // 将容器添加到消息列表
+        this.elements.messagesContainer.appendChild(elements.container);
+        
+        // 添加到消息容器数组，保持时间顺序
+        this.state.messageContainers.push({
+            type: 'tool',
+            id: toolId,
+            container: elements.container
+        });
+        
+        return elements;
+    },
+    
+    /**
      * 处理事件
      * @param {string} eventType - 事件类型
      * @param {Object} eventData - 事件数据
@@ -174,9 +253,11 @@ Object.assign(ChatUI, {
                 this.state.currentThinkingText = '';
                 this.state.responseMessageContainer = null;
                 this.state.thinkingMessageContainer = null;
+                this.state.thinkingTextContainer = null;
                 this.state.lastEventWasToolCall = false;
-                // 不再在这里创建助手消息容器，等待思考或消息事件
                 this.state.currentAssistantContainer = null;
+                this.state.messageContainers = [];
+                this.state.lastEventType = 'start';
                 break;
                 
             case 'message':
@@ -185,228 +266,270 @@ Object.assign(ChatUI, {
                 
                 // 只在有内容时处理容器创建
                 if (content) {
-                    // 如果是第一次收到消息事件，并且还没有显示过思考内容
-                    if (this.state.isThinkingFirst && !this.state.thinkingMessageContainer && !this.state.responseMessageContainer) {
-                        // 先创建最终回答的容器，但放在后面
-                        this.state.currentAssistantContainer = this.addMessage('', '', false, 'final-response');
-                    } else if (this.state.lastEventWasToolCall) {
-                        // 在工具调用之后，只有当有实际内容时才创建新的消息容器
-                        this.state.currentAssistantContainer = this.addMessage('', '', false, 'final-response');
-                        this.state.lastEventWasToolCall = false;
-                    } else if (!this.state.responseMessageContainer && !this.state.currentAssistantContainer) {
-                        // 如果还没有创建任何消息容器
-                        this.state.currentAssistantContainer = this.addMessage('', '', false, 'final-response');
-                    }
-                    
-                    // 获取消息元素
-                    if (this.state.currentAssistantContainer && !this.state.responseMessageContainer) {
-                        const messageElement = this.state.currentAssistantContainer.querySelector('.message');
-                        if (messageElement) {
-                            const textContainer = messageElement.querySelector('.message-text');
-                            if (textContainer) {
-                                this.state.responseMessageContainer = textContainer;
-                            }
-                        }
+                    // 如果最后一个事件不是消息事件，或者还没有创建消息容器
+                    if (this.state.lastEventType !== 'message' || !this.state.responseMessageContainer) {
+                        // 创建新的消息容器
+                        const elements = this.createMessageContainer('response', 'final-response');
+                        
+                        // 将容器添加到消息列表
+                        this.elements.messagesContainer.appendChild(elements.container);
+                        
+                        // 设置当前响应容器引用
+                        this.state.responseMessageContainer = elements.textContainer;
+                        this.state.currentAssistantContainer = elements.container;
+                        
+                        // 重置响应文本
+                        this.state.currentResponseText = '';
+                        
+                        // 添加到消息容器数组，保持时间顺序
+                        this.state.messageContainers.push({
+                            type: 'message',
+                            container: elements.container
+                        });
                     }
                     
                     // 追加新内容
                     this.state.currentResponseText += content;
-                    if (this.state.responseMessageContainer) {
-                        // 检查内容是否需要保留格式（如数据库内容）
-                        if (this.isFormattedDatabaseContent(this.state.currentResponseText)) {
-                            // 直接使用文本内容，不使用renderMarkdown
-                            this.state.responseMessageContainer.textContent = this.state.currentResponseText;
-                        } else {
-                            // 使用Markdown处理，支持列表格式
-                            this.state.responseMessageContainer.innerHTML = this.processMarkdown(this.state.currentResponseText);
-                        }
+                    
+                    // 更新显示内容
+                    if (this.isFormattedDatabaseContent(this.state.currentResponseText)) {
+                        // 直接使用文本内容，不使用renderMarkdown
+                        this.state.responseMessageContainer.textContent = this.state.currentResponseText;
+                    } else {
+                        // 使用Markdown处理，支持列表格式
+                        this.state.responseMessageContainer.innerHTML = this.processMarkdown(this.state.currentResponseText);
                     }
+                    
+                    // 滚动到底部
                     this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
-                } else if (this.state.lastEventWasToolCall) {
-                    // 当在工具调用后收到空消息时，不创建新容器，只重置标记
-                    this.state.lastEventWasToolCall = false;
                 }
+                
+                // 更新最后事件类型
+                this.state.lastEventType = 'message';
+                this.state.lastEventWasToolCall = false;
                 break;
                 
             case 'thinking':
-                // 思考内容放在上方的消息中，使用显眼的黄色背景
-                if (!this.state.thinkingMessageContainer) {
-                    const container = document.createElement('div');
-                    container.className = 'message-container assistant thinking-container'; // 添加thinking-container类
-                    const messageDiv = document.createElement('div');
-                    messageDiv.className = 'message thinking';
-                    
-                    // 添加思考标识
-                    const thinkingLabel = document.createElement('div');
-                    thinkingLabel.className = 'thinking-label';
-                    thinkingLabel.textContent = '思考过程';
-                    messageDiv.appendChild(thinkingLabel);
-                    
-                    // 创建文本容器
-                    const textContainer = document.createElement('pre');
-                    textContainer.className = 'message-text';
-                    textContainer.style.margin = '0';
-                    textContainer.style.fontFamily = 'inherit';
-                    textContainer.style.fontSize = 'inherit';
-                    textContainer.style.whiteSpace = 'pre-wrap';
-                    textContainer.style.wordBreak = 'break-word';
-                    
-                    messageDiv.appendChild(textContainer);
-                    container.appendChild(messageDiv);
-                    
-                    this.elements.messagesContainer.appendChild(container);
-                    this.state.thinkingMessageContainer = container;
-                    this.state.thinkingTextContainer = textContainer;
-                }
-                
-                // 追加新内容
+                // 获取思考内容
                 const thinkingContent = eventData.content || eventData.text || '';
-                this.state.currentThinkingText += thinkingContent;
                 
-                // 直接设置文本内容，不使用renderMarkdown
-                if (this.state.thinkingTextContainer) {
+                // 只在有内容时处理
+                if (thinkingContent) {
+                    // 如果最后一个事件不是thinking事件，或者还没有创建思考容器
+                    if (this.state.lastEventType !== 'thinking' || !this.state.thinkingMessageContainer) {
+                        // 创建新的思考容器
+                        const elements = this.createMessageContainer('thinking', 'thinking-container', '思考过程');
+                        
+                        // 将容器添加到消息列表
+                        this.elements.messagesContainer.appendChild(elements.container);
+                        
+                        // 设置当前思考容器引用
+                        this.state.thinkingMessageContainer = elements.container;
+                        this.state.thinkingTextContainer = elements.textContainer;
+                        
+                        // 重置思考文本
+                        this.state.currentThinkingText = '';
+                        
+                        // 添加到消息容器数组，保持时间顺序
+                        this.state.messageContainers.push({
+                            type: 'thinking',
+                            container: elements.container
+                        });
+                    }
+                    
+                    // 追加新内容
+                    this.state.currentThinkingText += thinkingContent;
+                    
+                    // 更新显示内容
                     this.state.thinkingTextContainer.textContent = this.state.currentThinkingText;
+                    
+                    // 滚动到底部
+                    this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
                 }
                 
-                this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
+                // 更新最后事件类型
+                this.state.lastEventType = 'thinking';
                 break;
                 
             case 'tool_call':
-                // 检查当前消息容器是否已经有文本内容
-                const hasTextContent = this.state.responseMessageContainer && 
-                                       this.state.responseMessageContainer.textContent && 
-                                       this.state.responseMessageContainer.textContent.trim() !== '';
+                // 获取工具调用信息
+                const toolName = eventData.name || eventData.tool || 'unknown_tool';
+                const toolArgs = eventData.input || eventData.params || eventData.arguments || {};
+                const toolId = eventData.id;
                 
-                // 如果当前消息已经有内容，则在发起工具调用前创建新的消息区域
-                // 这样可以让工具调用和相关的消息保持在一起
-                if (hasTextContent) {
-                    this.state.currentAssistantContainer = this.addMessage('', '', false);
-                    this.state.responseMessageContainer = null;
-                    this.state.currentResponseText = '';
-                }
+                // 创建工具调用容器
+                let toolContainer;
                 
-                // 确保有助手容器
-                if (!this.state.currentAssistantContainer) {
-                    this.state.currentAssistantContainer = this.addMessage('', '', false);
-                }
-                
-                // 添加with-tools类到消息元素
-                const messageEl = this.state.currentAssistantContainer.querySelector('.message');
-                if (messageEl && !messageEl.classList.contains('with-tools')) {
-                    messageEl.classList.add('with-tools');
-                }
-                
-                // 保存工具调用信息，等待结果
-                if (eventData && eventData.id) {
+                // 如果有ID，保存工具调用信息
+                if (toolId) {
                     // 确保pendingToolCalls已初始化
                     if (!this.state.pendingToolCalls) {
                         this.state.pendingToolCalls = {};
                     }
                     
                     // 保存工具调用信息
-                    this.state.pendingToolCalls[eventData.id] = {
-                        name: eventData.name || eventData.tool || 'unknown_tool',
-                        arguments: eventData.input || eventData.params || eventData.arguments || {},
-                        id: eventData.id
+                    this.state.pendingToolCalls[toolId] = {
+                        name: toolName,
+                        arguments: toolArgs,
+                        id: toolId
                     };
-                    console.log('Pending tool call saved:', this.state.pendingToolCalls[eventData.id]);
-                } else {
-                    // 如果没有ID，立即显示工具调用信息
+                    
+                    console.log('Pending tool call saved:', this.state.pendingToolCalls[toolId]);
+                    
+                    // 创建新的工具消息容器
+                    const elements = this.getToolContainer(toolId);
+                    toolContainer = elements.container;
+                    
+                    // 添加工具调用信息到容器
                     this.addToolBubble(
-                        this.state.currentAssistantContainer, 
-                        'tool-call', 
-                        `调用工具: ${eventData.name || eventData.tool}`, 
-                        eventData.input || eventData.params ? JSON.stringify(eventData.input || eventData.params, null, 2) : null,
+                        elements.container,
+                        'tool-call',
+                        `调用工具: ${toolName}`,
+                        toolArgs ? JSON.stringify(toolArgs, null, 2) : null,
+                        toolId
+                    );
+                } else {
+                    // 如果没有ID，创建简单的工具调用消息
+                    const elements = this.createMessageContainer('tool', 'tool-container');
+                    this.elements.messagesContainer.appendChild(elements.container);
+                    
+                    // 添加工具调用信息到容器
+                    this.addToolBubble(
+                        elements.container,
+                        'tool-call',
+                        `调用工具: ${toolName}`,
+                        toolArgs ? JSON.stringify(toolArgs, null, 2) : null,
                         null
                     );
+                    
+                    toolContainer = elements.container;
+                    
+                    // 添加到消息容器数组，保持时间顺序
+                    this.state.messageContainers.push({
+                        type: 'tool',
+                        container: elements.container
+                    });
                 }
                 
-                // 设置最后事件为工具调用
+                // 更新最后事件类型和标记
+                this.state.lastEventType = 'tool_call';
                 this.state.lastEventWasToolCall = true;
+                
+                // 滚动到底部
+                this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
                 break;
                 
             case 'tool_result':
-                // 确保有助手容器
-                if (!this.state.currentAssistantContainer) {
-                    this.state.currentAssistantContainer = this.addMessage('', '', false);
-                }
-                
                 // 检查是否有匹配的工具调用
                 if (eventData && eventData.id && this.state.pendingToolCalls && this.state.pendingToolCalls[eventData.id]) {
                     const toolCall = this.state.pendingToolCalls[eventData.id];
-                    // 创建合并的工具调用和结果气泡
-                    this.createCombinedToolBubble(
-                        toolCall.name,
-                        toolCall.arguments,
-                        eventData.output || eventData.result || "No result",
-                        null,
+                    const toolOutput = eventData.output || eventData.result || "No result";
+                    
+                    // 获取工具调用的容器
+                    let elements = this.getToolContainer(eventData.id);
+                    
+                    // 添加工具结果信息到容器
+                    this.addToolBubble(
+                        elements.container,
+                        'tool-result',
+                        `工具结果: ${toolCall.name || 'unknown_tool'}`,
+                        toolOutput,
                         eventData.id
                     );
                     
                     // 移除已处理的工具调用
                     delete this.state.pendingToolCalls[eventData.id];
                 } else {
-                    // 如果没有匹配的工具调用，使用常规方式显示
+                    // 如果没有匹配的工具调用，创建新的工具结果消息
+                    const elements = this.createMessageContainer('tool', 'tool-container');
+                    this.elements.messagesContainer.appendChild(elements.container);
+                    
+                    // 添加工具结果信息到容器
                     this.addToolBubble(
-                        this.state.currentAssistantContainer, 
-                        'tool-result', 
-                        `工具结果: ${eventData ? (eventData.name || eventData.tool || 'unknown_tool') : 'unknown_tool'}`, 
+                        elements.container,
+                        'tool-result',
+                        `工具结果: ${eventData ? (eventData.name || eventData.tool || 'unknown_tool') : 'unknown_tool'}`,
                         eventData ? (eventData.output || eventData.result || "No result") : "No result",
                         eventData ? eventData.id : null
                     );
+                    
+                    // 添加到消息容器数组，保持时间顺序
+                    this.state.messageContainers.push({
+                        type: 'tool',
+                        container: elements.container
+                    });
                 }
                 
-                // 标记最后事件为工具调用
+                // 更新最后事件类型和标记
+                this.state.lastEventType = 'tool_result';
                 this.state.lastEventWasToolCall = true;
+                
+                // 滚动到底部
+                this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
                 break;
                 
             case 'tool_error':
-                // 确保有助手容器
-                if (!this.state.currentAssistantContainer) {
-                    this.state.currentAssistantContainer = this.addMessage('', '', false);
-                }
-                
                 // 检查是否有匹配的工具调用
                 if (eventData && eventData.id && this.state.pendingToolCalls && this.state.pendingToolCalls[eventData.id]) {
                     const toolCall = this.state.pendingToolCalls[eventData.id];
-                    // 创建合并的工具调用和错误气泡
-                    this.createCombinedToolBubble(
-                        toolCall.name,
-                        toolCall.arguments,
-                        null,
-                        eventData.error || eventData.message || "未知错误",
+                    const toolError = eventData.error || eventData.message || "未知错误";
+                    
+                    // 获取工具调用的容器
+                    let elements = this.getToolContainer(eventData.id);
+                    
+                    // 添加工具错误信息到容器
+                    this.addToolBubble(
+                        elements.container,
+                        'tool-error',
+                        `工具错误: ${toolCall.name || 'unknown_tool'}`,
+                        toolError,
                         eventData.id
                     );
                     
                     // 移除已处理的工具调用
                     delete this.state.pendingToolCalls[eventData.id];
                 } else {
-                    // 如果没有匹配的工具调用，使用常规方式显示
+                    // 如果没有匹配的工具调用，创建新的工具错误消息
+                    const elements = this.createMessageContainer('tool', 'tool-container');
+                    this.elements.messagesContainer.appendChild(elements.container);
+                    
+                    // 添加工具错误信息到容器
                     this.addToolBubble(
-                        this.state.currentAssistantContainer, 
-                        'tool-error', 
-                        `工具错误`, 
+                        elements.container,
+                        'tool-error',
+                        `工具错误`,
                         eventData ? (eventData.error || eventData.message || "未知错误") : "未知错误",
                         eventData ? eventData.id : null
                     );
+                    
+                    // 添加到消息容器数组，保持时间顺序
+                    this.state.messageContainers.push({
+                        type: 'tool',
+                        container: elements.container
+                    });
                 }
                 
-                // 标记最后事件为工具调用
+                // 更新最后事件类型和标记
+                this.state.lastEventType = 'tool_error';
                 this.state.lastEventWasToolCall = true;
+                
+                // 滚动到底部
+                this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
                 break;
                 
             case 'error':
-                // 检查错误消息是否来自新格式
+                // 添加错误消息
                 const errorMessage = eventData.error || eventData.message || "未知错误";
                 this.addErrorMessage(`错误: ${errorMessage}`);
                 this.elements.sendButton.disabled = false;
+                this.state.lastEventType = 'error';
                 break;
                 
             case 'done':
             case 'end':
                 // 流式输出完成，处理响应文本以移除多余空行
                 if (this.state.responseMessageContainer && this.state.currentResponseText) {
-                    // 移除开头和结尾的空行以及连续的多个空行变为单个空行
+                    // 移除多余空行
                     const strippedText = this.stripExtraEmptyLines(this.state.currentResponseText);
                     
                     // 更新显示内容
@@ -420,23 +543,11 @@ Object.assign(ChatUI, {
                     
                     // 保存处理后的文本
                     this.state.currentResponseText = strippedText;
-                } else if (this.state.currentAssistantContainer && 
-                          (!this.state.currentResponseText || this.state.currentResponseText.trim() === '')) {
-                    // 检查并移除空的消息气泡
-                    const messageElement = this.state.currentAssistantContainer.querySelector('.message');
-                    if (messageElement && !messageElement.classList.contains('with-tools') && 
-                        (!messageElement.textContent || messageElement.textContent.trim() === '')) {
-                        // 移除整个空消息容器
-                        this.elements.messagesContainer.removeChild(this.state.currentAssistantContainer);
-                        // 重置当前助手容器变量
-                        this.state.currentAssistantContainer = null;
-                        this.state.responseMessageContainer = null;
-                    }
                 }
                 
                 // 处理思考内容以移除多余空行
                 if (this.state.thinkingTextContainer && this.state.currentThinkingText) {
-                    // 移除开头和结尾的空行以及连续的多个空行变为单个空行
+                    // 移除多余空行
                     const strippedThinkingText = this.stripExtraEmptyLines(this.state.currentThinkingText);
                     
                     // 更新显示内容
@@ -446,8 +557,50 @@ Object.assign(ChatUI, {
                     this.state.currentThinkingText = strippedThinkingText;
                 }
                 
+                // 清理空白消息容器
+                this.cleanupEmptyContainers();
+                
+                // 启用发送按钮
                 this.elements.sendButton.disabled = false;
+                this.state.lastEventType = eventType;
                 break;
+        }
+    },
+    
+    /**
+     * 清理空白消息容器
+     */
+    cleanupEmptyContainers: function() {
+        // 遍历所有消息容器，移除空的容器
+        for (let i = 0; i < this.state.messageContainers.length; i++) {
+            const containerInfo = this.state.messageContainers[i];
+            const container = containerInfo.container;
+            
+            // 检查容器是否为空
+            if (container && (!container.textContent || container.textContent.trim() === '')) {
+                // 检查容器是否包含工具调用
+                const hasTools = container.querySelector('.tool-bubble');
+                
+                // 如果容器为空且不包含工具调用，移除它
+                if (!hasTools) {
+                    if (container.parentNode) {
+                        container.parentNode.removeChild(container);
+                    }
+                    
+                    // 从数组中移除引用
+                    this.state.messageContainers.splice(i, 1);
+                    i--; // 调整索引
+                    
+                    // 重置相关引用
+                    if (container === this.state.thinkingMessageContainer) {
+                        this.state.thinkingMessageContainer = null;
+                        this.state.thinkingTextContainer = null;
+                    } else if (container === this.state.currentAssistantContainer) {
+                        this.state.currentAssistantContainer = null;
+                        this.state.responseMessageContainer = null;
+                    }
+                }
+            }
         }
     },
     

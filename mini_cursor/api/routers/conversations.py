@@ -107,7 +107,7 @@ async def load_conversation(request: LoadConversationRequest, client: MCPClient 
                 elif msg.get('sender') == 'assistant':
                     # 添加助手消息
                     client.message_manager.add_assistant_message(
-                        msg.get('content', '')
+                        llm_response=msg
                     )
                 elif msg.get('sender') == 'tool':
                     # 跳过工具消息，它们会在下一轮对话中重新生成

@@ -164,7 +164,7 @@ async def chat_loop(client, cli_handler, workspace):
                     lines = query.count('\n') + 1
                     print(f"\n{Colors.CYAN}正在处理您的输入 ({len(query)} 字符, {lines} 行)...{Colors.ENDC}")
                 
-                await client.process_query(query, system_prompt%(os_version, workspace, shell_path))
+                await client.process_query(query, system_prompt)
             except Exception as e:
                 print(f"\n{Colors.RED}处理查询时出错: {e}{Colors.ENDC}")
                 if VERBOSE_LOGGING:

@@ -8,3 +8,5 @@ mt_base_application	应用基础信息表
 mt_base_data	数据基础信息表
 mt_base_device	设备基础信息表
 mt_base_person	用户基础信息表
+
+当你需要对表进行操作时,请先获取相应表的字段,再进行操作,避免不必要的失误.
