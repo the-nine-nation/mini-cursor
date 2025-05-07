@@ -508,15 +508,6 @@ class MCPClient:
                         
                         continue  # Continue the loop to process these new tool calls
 
-                # The loop condition `while hasattr(message, 'tool_calls') and message.tool_calls:`
-                # will now correctly check the *new* message obtained from the second LLM call.
-            
-            # 在完成所有处理后，一次性存储整个对话到数据库
-            
-            # Check if the conversation has progressed beyond the initial user message
-            # A conversation needs at least user + assistant/tool messages to be saved.
-            # Assuming system prompt might be message 0, user is message 1.
-            # So, len > 2 means at least one assistant action has occurred.
             if len(self.message_manager.get_messages()) > 2:  
                 try:
                     # If it's a new conversation, create the record
