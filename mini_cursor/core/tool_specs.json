@@ -31,7 +31,8 @@
                 "target_file",
                 "should_read_entire_file",
                 "start_line_one_indexed",
-                "end_line_one_indexed_inclusive"
+                "end_line_one_indexed_inclusive",
+                "explanation"
             ]
         }
     },
@@ -103,7 +104,8 @@
             },
             "required": [
                 "command",
-                "is_background"
+                "is_background",
+                "explanation"
             ]
         }
     },
@@ -152,9 +154,13 @@
                 "query": {"type": "string", "description": "The search query."},
                 "summary": {"type": "boolean", "description": "Whether to return a summary.", "default": true},
                 "count": {"type": "integer", "description": "Number of results to return.", "default": 10},
-                "page": {"type": "integer", "description": "Page number.", "default": 1}
+                "page": {"type": "integer", "description": "Page number.", "default": 1},
+                "explanation": {
+                    "type": "string",
+                    "description": "One sentence explanation as to why this tool is being used, and how it contributes to the goal."
+                }
             },
-            "required": ["query"]
+            "required": ["query", "explanation"]
         }
     }
 ] 

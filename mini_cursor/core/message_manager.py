@@ -4,6 +4,26 @@ class MessageManager:
     def __init__(self):
         self.message_history = []
         
+    def restore_history(self, conversation_history):
+        """从提供的对话历史恢复消息历史"""
+        if conversation_history and isinstance(conversation_history, list):
+            # 保存系统消息（如果存在）
+            system_message = None
+            if self.message_history and self.message_history[0]["role"] == "system":
+                system_message = self.message_history[0]
+                
+            # 设置新的消息历史
+            self.message_history = conversation_history
+            
+            # 如果之前有系统消息且新历史没有系统消息，则添加回原系统消息
+            if system_message and (not self.message_history or self.message_history[0]["role"] != "system"):
+                self.message_history.insert(0, system_message)
+                
+            # 裁剪消息历史以控制上下文窗口大小
+            self.trim_message_history()
+            
+        return self.message_history
+        
     def add_user_message(self, query, system_prompt=None):
         """添加用户消息，可选择更新系统提示"""
         # 创建系统信息

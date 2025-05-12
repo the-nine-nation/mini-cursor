@@ -26,6 +26,9 @@ async def chat(request: ChatRequest, client: MCPClient = Depends(get_client)):
     workspace = request.workspace or os.getcwd()
     custom_system_prompt = request.system_prompt or load_system_prompt()
     
+    # 获取对话历史记录（如果有）
+    conversation_history = request.conversation_history if hasattr(request, 'conversation_history') else None
+    
     # 准备 SSE 流
     async def generate_stream():
         # 初始化process_task为None，以便在发生异常时安全检查
@@ -48,12 +51,13 @@ async def chat(request: ChatRequest, client: MCPClient = Depends(get_client)):
             client.set_update_listener(event_listener)
             
             try:
-                # 启动异步处理查询的任务
+                # 启动异步处理查询的任务，传递对话历史记录
                 process_task = asyncio.create_task(
                     client.process_query(
                         request.query, 
                         custom_system_prompt+user_info%(os_version, workspace, shell_path),
-                        stream=True
+                        stream=True,
+                        conversation_history=conversation_history
                     )
                 )
                 

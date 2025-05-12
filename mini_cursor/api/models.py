@@ -7,6 +7,7 @@ class ChatRequest(BaseModel):
     query: str
     system_prompt: Optional[str] = None
     workspace: Optional[str] = None
+    conversation_history: Optional[List[Dict[str, Any]]] = None
 
 class OpenAIConfigRequest(BaseModel):
     """OpenAI配置请求模型"""

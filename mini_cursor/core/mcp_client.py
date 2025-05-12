@@ -76,7 +76,7 @@ class MCPClient:
         
     
     
-    async def process_query(self, query: str, system_prompt: str, stream=True) -> str:
+    async def process_query(self, query: str, system_prompt: str, stream=True, conversation_history=None) -> str:
         """使用 LLM 和 多个 MCP 服务器提供的工具处理查询"""
         # 创建一个临时conversation_id变量，但先不立即创建数据库记录
         is_existing_conversation = False
@@ -84,6 +84,10 @@ class MCPClient:
         # 如果存在当前对话ID，标记为已有对话
         if self.current_conversation_id and self.message_manager.message_history:
             is_existing_conversation = True
+        
+        # 如果提供了对话历史记录，则恢复消息历史
+        if conversation_history:
+            self.message_manager.restore_history(conversation_history)
         
         # 添加新的用户查询到消息历史
         messages = self.message_manager.add_user_message(query, system_prompt)
@@ -199,7 +203,7 @@ class MCPClient:
                 # 构建消息对象
                 message = {
                     'role': 'assistant',
-                    'content': collected_content,
+                    'content': collected_content.strip(),
                     'reasoning_content': collected_reasoning if collected_reasoning else None,
                     'tool_calls': [t for t in tool_calls if t["id"]]
                 }
@@ -307,7 +311,7 @@ class MCPClient:
                         self.tool_history.append({
                             "tool": tool_name,
                             "args": tool_args,
-                            "result": result
+                            "result": str(result)
                         })
                         
                         # 收集工具调用结果
