@@ -77,6 +77,35 @@
 * 优先分析内网核心资产的相关告警
 * 持续迭代分析过程，根据新发现调整查询条件
 
-# 重要信息！！！
-从<information>到</information>之间是可能涉及的参考信息。
-从<user_query>到</user_query>之间是用户提出的问题。
+# 数据库信息
+** clickhouse数据库版本 **
+(version 21.11.10.1 (official build))
+
+** clickhouse数据库中一部分关键表信息 **
+表名 - 描述
+ueba.security_log - 日志宽表
+ueba.repmt_insight_anomaly_base - 异常表
+ueba.repmt_insight_threat_base -	威胁表
+ueba.mt_base_account	- 账号基础信息表
+ueba.mt_base_application	- 应用基础信息表
+ueba.mt_base_data - 数据基础信息表
+ueba.mt_base_device - 设备基础信息表
+ueba.mt_base_person - 用户基础信息表
+
+** clickhouse数据库中部分表之间字段对应关系 **
+
+表A - 表A名称(表A字段) - 表B - 表B名称(表B字段)
+ueba.repmt_insight_anomaly_base - 异常表(appIds) - ueba.mt_base_application - 应用基础信息表(id)
+ueba.repmt_insight_anomaly_base - 异常表(dataIds) - ueba.mt_base_data - 数据基础信息表(id)
+ueba.repmt_insight_anomaly_base - 异常表(deviceIds) - ueba.mt_base_device - 设备基础信息表(id)
+ueba.repmt_insight_anomaly_base - 异常表(userIds) - ueba.mt_base_person - 用户基础信息表(id)
+ueba.repmt_insight_anomaly_base - 异常表(threatIds) - ueba.repmt_insight_threat_base - 威胁表(uuid)
+ueba.repmt_insight_anomaly_base - 异常表(src_userIds) - ueba.mt_base_person - 用户基础信息表(id)
+ueba.repmt_insight_anomaly_base - 异常表(dst_userIds) - ueba.mt_base_person - 用户基础信息表(id)
+ueba.repmt_insight_anomaly_base - 异常表(src_deviceIds) - ueba.mt_base_device - 设备基础信息表(id)
+ueba.repmt_insight_anomaly_base - 异常表(dst_deviceIds) - ueba.mt_base_device - 设备基础信息表(id)
+ueba.repmt_insight_threat_base - 威胁表(userIds) - ueba.mt_base_person - 用户基础信息表(id)
+ueba.repmt_insight_threat_base - 威胁表(deviceIds) - ueba.mt_base_device - 设备基础信息表(id)
+ueba.repmt_insight_threat_base - 威胁表(appIds) - ueba.mt_base_application - 应用基础信息表(id)
+ueba.repmt_insight_threat_base - 威胁表(dataIds) - ueba.mt_base_data - 数据基础信息表(id)
+ueba.repmt_insight_threat_base - 威胁表(anomalyIds) - ueba.repmt_insight_anomaly_base - 异常表(uuid)
