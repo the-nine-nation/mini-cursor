@@ -12,6 +12,8 @@ cursor一个月20美金,对于很多人而言,这是一个星期的饭食.cursor
 
 ## 更新
 
+**2025-05-14**: 经过一段时间不懈努力,终于修复了各种显示问题.
+
 **2025-04-28**: 针对MySQL和ClickHouse的MCP服务将不再作为默认MCP服务。
 - MySQL的MCP地址: [mysql-mcp](https://github.com/the-nine-nation/mysql-mcp)
 - ClickHouse的MCP地址: [clickhouse-mcp](https://github.com/the-nine-nation/clickhouse-mcp)
@@ -36,20 +38,15 @@ cursor一个月20美金,对于很多人而言,这是一个星期的饭食.cursor
 
 ## 安装方法
 
-### 方式一：pip 安装（暂时未支持,现在处于测试阶段）
 
-```bash
-pip install mini_cursor
-```
-
-### 方式二：源码安装（开发者/自定义）
+### 源码安装（开发者/自定义）
 
 ```bash
 conda create -n mini-cursor python=3.10
 conda activate mini-cursor
 git clone https://github.com/the-nine-nation/mini-cursor.git
 cd mini_cursor
-pip install -e .
+pip install .
 ```
 
 ---

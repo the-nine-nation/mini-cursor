@@ -10,6 +10,8 @@ This project supports fully local/intranet deployment with no possibility of dat
 
 ## Update
 
+**2025-05-14**: After persistent efforts over a period of time, various display issues have finally been resolved.
+
 **2025-04-28**: MCP services for MySQL and ClickHouse will no longer be included as default MCP services.
 - MySQL MCP repository: [mysql-mcp](https://github.com/the-nine-nation/mysql-mcp)
 - ClickHouse MCP repository: [clickhouse-mcp](https://github.com/the-nine-nation/clickhouse-mcp)
@@ -34,20 +36,15 @@ This project supports fully local/intranet deployment with no possibility of dat
 
 ## Installation
 
-### Method 1: pip install (not supported temporarily, currently in testing phase)
 
-```bash
-pip install mini_cursor
-```
-
-### Method 2: Source install (for developers/customization)
+###  Source install (for developers/customization)
 
 ```bash
 conda create -n mini-cursor python=3.10
 conda activate mini-cursor
 git clone https://github.com/the-nine-nation/mini-cursor.git
 cd mini_cursor
-pip install -e .
+pip install .
 ```
 
 ---
